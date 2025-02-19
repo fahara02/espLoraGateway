@@ -35,8 +35,8 @@ void MockLoRaModem::testOptMode()
 		Register reg(REG::OPMODE, REG_MODE::READ_WRITE, 0x01, 0);
 
 		// Calling with RX; assuming RX is defined as 5.
-		uint8_t result = reg.setOptMode<REG::OPMODE, LoRaChip::ChipModel::SX1277>(
-			LoRaChip::LowFreqMode::LOW_FREQUENCY_MODE);
+		uint8_t result = reg.setOptMode<REG::OPMODE, LoRa::ChipModel::SX1276>(
+			LoRa::LowFreqMode::LOW_FREQUENCY_MODE);
 
 		TEST_ASSERT_EQUAL_UINT8(0x08, result);
 	}

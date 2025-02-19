@@ -6,12 +6,11 @@
 #include "Logger.hpp"
 
 using namespace LoRa;
-using namespace LoRaChip;
 
 class MockLoRaModem : public LoRaModem
 {
   public:
-	using Model = LoRaChip::ChipModel;
+	using Model = LoRa::ChipModel;
 	static void runAllTests();
 
   private:

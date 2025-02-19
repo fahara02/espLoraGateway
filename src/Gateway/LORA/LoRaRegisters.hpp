@@ -82,31 +82,30 @@ struct Register
 	}
 
 	template<REG T>
-	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
-		setOptMode(const LoRaChip::LongRangeMode mode)
+	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type setOptMode(const LongRangeMode mode)
 	{
 		value = (value & ~(1 << 7)) | ((static_cast<uint8_t>(mode) & 0b1) << 7);
 		return value;
 	}
 
-	template<REG T, LoRaChip::ChipModel Model>
+	template<REG T, ChipModel Model>
 	typename etl::enable_if<(T == REG::OPMODE && is_sx1276_plus_v<Model>), uint8_t>::type
-		setOptMode(const LoRaChip::LowFreqMode mode)
+		setOptMode(const LowFreqMode mode)
 	{
 		return value = (value & ~(1 << 3)) | (static_cast<uint8_t>(mode) & 0b1) << 3;
 	}
 
 	template<REG T>
 	typename etl::enable_if<(T == REG::OPMODE), uint8_t>::type
-		setOptMode(const LoRaChip::TransceiverModes mode)
+		setOptMode(const TransceiverModes mode)
 	{
 		value = (value & ~0b111) | (static_cast<uint8_t>(mode) & 0b111);
 		return value;
 	}
 
-	template<REG T, LoRaChip::ChipModel Model>
+	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
-		setOptMode(const LoRaChip::ConfigureOptMode<Model>& optmode)
+		setOptMode(const ConfigureOptMode<Model>& optmode)
 	{
 		value = (value & ~((1 << 7) | (1 << 6) | (1 << 3) | 0b111));
 
@@ -123,9 +122,9 @@ struct Register
 		return value;
 	}
 
-	template<REG T, LoRaChip::ChipModel Model>
+	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		configureModem(const LoRaChip::ModemConfig1<Model>& config)
+		configureModem(const ModemConfig1<Model>& config)
 	{
 		// Clear only the bits being modified while preserving others
 		if constexpr(is_sx1276_plus_v<Model>)
@@ -137,8 +136,7 @@ struct Register
 					 (static_cast<uint8_t>(config.coding_rate) << 1) | // Bits [3:1]
 					 (static_cast<uint8_t>(config.header_mode)); // Bit [0]
 		}
-		else if constexpr(Model == LoRaChip::ChipModel::SX1272 ||
-						  Model == LoRaChip::ChipModel::SX1273)
+		else if constexpr(Model == ChipModel::SX1272 || Model == ChipModel::SX1273)
 		{
 			// SX1272/73 models (6 fields)
 			value &= ~((0b11 << 6) | (0b111 << 3) | (0b1 << 2) | (0b1 << 1) | (0b1));

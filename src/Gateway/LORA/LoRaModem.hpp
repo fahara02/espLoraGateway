@@ -13,8 +13,8 @@ namespace LoRa
 class LoRaModem
 {
   public:
-	using rMode = LoRaChip::LongRangeMode;
-	using tMode = LoRaChip::TransceiverModes;
+	using rMode = LongRangeMode;
+	using tMode = TransceiverModes;
 	LoRaModem(BoardModel model, uint8_t address, LoRaBands band, const uint8_t bandIndex);
 
 	void startReceiver();

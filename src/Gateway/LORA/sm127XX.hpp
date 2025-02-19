@@ -3,7 +3,7 @@
 #include <cstdint>
 #include "etl/type_traits.h"
 
-namespace LoRaChip
+namespace LoRa
 {
 enum class ChipModel
 {
@@ -140,7 +140,7 @@ enum class LowDataRateOptimize : uint8_t
 	ENABLE = 1,
 };
 
-template<LoRaChip::ChipModel Model>
+template<ChipModel Model>
 struct ModemConfig1
 {
 	SignalBandWidth<Model> bw;
@@ -151,5 +151,5 @@ struct ModemConfig1
 	LowDataRateOptimize ldro;
 };
 
-} // namespace LoRaChip
+} // namespace LoRa
 #endif
