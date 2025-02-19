@@ -68,7 +68,6 @@ enum class REG
 	PADAC_SX1276
 };
 
-// Base structure for registers
 struct Register
 {
 	const REG reg;
@@ -86,46 +85,68 @@ struct Register
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
 		setOptMode(const LoRaChip::LongRangeMode mode)
 	{
-		return value |= (static_cast<uint8_t>(mode) & 0b1) << 7;
+		value = (value & ~(1 << 7)) | ((static_cast<uint8_t>(mode) & 0b1) << 7);
+		return value;
 	}
+
+	template<REG T, LoRaChip::ChipModel Model>
+	typename etl::enable_if<(T == REG::OPMODE && is_sx1276_plus_v<Model>), uint8_t>::type
+		setOptMode(const LoRaChip::LowFreqMode mode)
+	{
+		return value = (value & ~(1 << 3)) | (static_cast<uint8_t>(mode) & 0b1) << 3;
+	}
+
 	template<REG T>
-	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
+	typename etl::enable_if<(T == REG::OPMODE), uint8_t>::type
 		setOptMode(const LoRaChip::TransceiverModes mode)
 	{
-		return value |= (static_cast<uint8_t>(mode) & 0b111);
+		value = (value & ~0b111) | (static_cast<uint8_t>(mode) & 0b111);
+		return value;
 	}
-	template<REG T>
+
+	template<REG T, LoRaChip::ChipModel Model>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
-		setOptMode(const LoRaChip::ConfigureOptMode& optmode)
+		setOptMode(const LoRaChip::ConfigureOptMode<Model>& optmode)
 	{
-		return value = ((static_cast<uint8_t>(optmode.long_range) & 0b1) << 7) |
-					   ((static_cast<uint8_t>(optmode.shared_reg) & 0b1) << 6) |
-					   ((static_cast<uint8_t>(optmode.transceiver) & 0b111));
+		value = (value & ~((1 << 7) | (1 << 6) | (1 << 3) | 0b111));
+
+		value |= ((static_cast<uint8_t>(optmode.long_range) & 0b1) << 7) |
+				 ((static_cast<uint8_t>(optmode.shared_reg) & 0b1) << 6);
+
+		if constexpr(is_sx1276_plus_v<Model>)
+		{
+			value |= (static_cast<uint8_t>(optmode.low_freq) & 0b1) << 3;
+		}
+
+		value |= (static_cast<uint8_t>(optmode.transceiver) & 0b111); // Bits [2:0]
+
+		return value;
 	}
 
 	template<REG T, LoRaChip::ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
 		configureModem(const LoRaChip::ModemConfig1<Model>& config)
 	{
-		value = 0; // Reset before setting bits
-
-		if constexpr(Model == LoRaChip::ChipModel::SX1276 || Model == LoRaChip::ChipModel::SX1277 ||
-					 Model == LoRaChip::ChipModel::SX1278 || Model == LoRaChip::ChipModel::SX1279)
+		// Clear only the bits being modified while preserving others
+		if constexpr(is_sx1276_plus_v<Model>)
 		{
 			// SX1276+ models (4 fields)
-			value = (static_cast<uint8_t>(config.bw) << 4) | // Bits [7:4] - Bandwidth
-					(static_cast<uint8_t>(config.coding_rate) << 1) | // Bits [3:1] - Coding Rate
-					(static_cast<uint8_t>(config.header_mode)); // Bit [0] - Header Mode ✅
+			value &= ~((0b1111 << 4) | (0b111 << 1) | (0b1));
+
+			value |= (static_cast<uint8_t>(config.bw) << 4) | // Bits [7:4]
+					 (static_cast<uint8_t>(config.coding_rate) << 1) | // Bits [3:1]
+					 (static_cast<uint8_t>(config.header_mode)); // Bit [0]
 		}
 		else if constexpr(Model == LoRaChip::ChipModel::SX1272 ||
 						  Model == LoRaChip::ChipModel::SX1273)
 		{
 			// SX1272/73 models (6 fields)
-			value = (static_cast<uint8_t>(config.bw) << 6) | // Bits [7:6] - Bandwidth (Only 2 bits)
-					(static_cast<uint8_t>(config.coding_rate) << 3) | // Bits [5:3] - Coding Rate
-					(static_cast<uint8_t>(config.header_mode) << 2) | // Bit [2] - Header Mode ✅
-					(static_cast<uint8_t>(config.mode) << 1) | // Bit [1] - CRC Mode
-					(static_cast<uint8_t>(config.ldro) & 0b1); // Bit [0] - Low Data Rate Optimize
+			value &= ~((0b11 << 6) | (0b111 << 3) | (0b1 << 2) | (0b1 << 1) | (0b1));
+			value |= (static_cast<uint8_t>(config.bw) << 6) | // Bits [7:6]
+					 (static_cast<uint8_t>(config.coding_rate) << 3) | // Bits [5:3]
+					 (static_cast<uint8_t>(config.header_mode) << 2) | // Bit [2]
+					 (static_cast<uint8_t>(config.mode) << 1) | // Bit [1]
+					 (static_cast<uint8_t>(config.ldro) & 0b1); // Bit [0]
 		}
 
 		return value;

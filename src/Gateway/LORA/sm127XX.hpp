@@ -18,6 +18,13 @@ enum class ChipModel
 	SX1262,
 };
 
+template<ChipModel Model>
+static constexpr bool is_sx1276_plus_v = Model == ChipModel::SX1276 || Model == ChipModel::SX1277 ||
+										 Model == ChipModel::SX1278 || Model == ChipModel::SX1279;
+
+template<ChipModel Model>
+static constexpr bool is_sx1272_plus_v = Model == ChipModel::SX1272 || Model == ChipModel::SX1273;
+
 enum class LongRangeMode : uint8_t
 {
 	FSK_OOK = 0,
@@ -28,6 +35,11 @@ enum class AccessSharedReg : uint8_t
 {
 	ACCESS_LORA = 0x0,
 	ACCESS_FSK = 0x1,
+};
+enum class LowFreqMode : uint8_t
+{
+	HIGH_FREQUENCY_MODE = 0x0,
+	LOW_FREQUENCY_MODE = 0x1,
 };
 
 enum class TransceiverModes : uint8_t
@@ -42,10 +54,23 @@ enum class TransceiverModes : uint8_t
 	CAD = 0x7 // Channel Activity Detection
 };
 
-struct ConfigureOptMode
+template<ChipModel Model>
+struct ConfigureOptMode;
+
+template<>
+struct ConfigureOptMode<ChipModel::SX1272>
 {
 	LongRangeMode long_range;
 	AccessSharedReg shared_reg;
+	TransceiverModes transceiver;
+};
+
+template<>
+struct ConfigureOptMode<ChipModel::SX1276>
+{
+	LongRangeMode long_range;
+	AccessSharedReg shared_reg;
+	LowFreqMode low_freq;
 	TransceiverModes transceiver;
 };
 
@@ -71,13 +96,26 @@ enum class SignalBandwidth_76 : uint8_t
 	BW_125_KHZ = 0b0111, // 125 kHz
 	BW_250_KHZ = 0b1000, // 250 kHz
 	BW_500_KHZ = 0b1001, // 500 kHz
-
-	// SX1272 bandwidth settings (2 bits)
-	BW_125_KHZ_SX1272 = 0b00, // 125 kHz
-	BW_250_KHZ_SX1272 = 0b01, // 250 kHz
-	BW_500_KHZ_SX1272 = 0b10, // 500 kHz
-	BW_RESERVED = 0b11 // Reserved
 };
+
+template<ChipModel Model, typename Enable = void>
+struct SignalBandWidth
+{
+	using Type = void; // Default case, no shaping
+};
+
+template<ChipModel Model>
+struct SignalBandWidth<Model, typename etl::enable_if<(is_sx1272_plus_v<Model>)>::type>
+{
+	using Type = SignalBandwidth_72;
+};
+
+template<ChipModel Model>
+struct SignalBandWidth<Model, typename etl::enable_if<(is_sx1276_plus_v<Model>)>::type>
+{
+	using Type = SignalBandwidth_76;
+};
+
 enum class CodingRate : uint8_t
 {
 	ERROR_CODING_4_5 = 0x1,
@@ -100,26 +138,6 @@ enum class LowDataRateOptimize : uint8_t
 {
 	DISABLE = 0,
 	ENABLE = 1,
-};
-template<ChipModel Model, typename Enable = void>
-struct SignalBandWidth
-{
-	using Type = void; // Default case, no shaping
-};
-
-template<ChipModel Model>
-struct SignalBandWidth<
-	Model, typename etl::enable_if<Model == ChipModel::SX1272 || Model == ChipModel::SX1273>::type>
-{
-	using Type = SignalBandwidth_72;
-};
-
-template<ChipModel Model>
-struct SignalBandWidth<
-	Model, typename etl::enable_if<Model == ChipModel::SX1276 || Model == ChipModel::SX1277 ||
-								   Model == ChipModel::SX1278 || Model == ChipModel::SX1279>::type>
-{
-	using Type = SignalBandwidth_76;
 };
 
 template<LoRaChip::ChipModel Model>

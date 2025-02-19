@@ -11,6 +11,7 @@ using namespace LoRaChip;
 class MockLoRaModem : public LoRaModem
 {
   public:
+	using Model = LoRaChip::ChipModel;
 	static void runAllTests();
 
   private:
