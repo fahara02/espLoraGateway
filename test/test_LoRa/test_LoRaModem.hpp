@@ -7,13 +7,17 @@
 
 using namespace LoRa;
 
-class MockLoRaModem : public LoRaModem
+class MockLoRaModem : public LoRaModem<ChipModel::SX1276>
 {
   public:
+	MockLoRaModem() : LoRaModem(BoardModel::ESP32_TTGO, 0x20, LoRaBands::EU433, 0)
+	{
+	}
 	using Model = LoRa::ChipModel;
 	static void runAllTests();
 
   private:
 	static void testOptMode();
+	static void testBandwidth();
 };
 #endif

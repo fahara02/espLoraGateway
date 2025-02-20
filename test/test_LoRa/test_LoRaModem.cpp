@@ -6,6 +6,7 @@ void MockLoRaModem::runAllTests()
 {
 	LOG::ENABLE();
 	RUN_TEST(testOptMode);
+	RUN_TEST(testBandwidth);
 }
 
 void MockLoRaModem::testOptMode()
@@ -53,4 +54,18 @@ void MockLoRaModem::testOptMode()
 		// Expected: 128 | 64 | 3 = 195
 		TEST_ASSERT_EQUAL_UINT8(195, result);
 	}
+}
+void MockLoRaModem::testBandwidth()
+{
+	LOG::TEST(TAG, "Testing BandWidth function");
+	MockLoRaModem modem;
+
+	// Test for SX1272 (BW_72)
+	using BandwidthType = typename LoRa::LoRaModem<LoRa::ChipModel::SX1276>::Bandwidth;
+	BandwidthType bw = BandwidthType::BW_250_KHZ;
+
+	uint8_t result76 = modem.setBandWidth(bw, false);
+	uint8_t expected76 = static_cast<uint8_t>(SignalBandwidth_76::BW_250_KHZ) << 4;
+
+	TEST_ASSERT_EQUAL_UINT8(expected76, result76);
 }

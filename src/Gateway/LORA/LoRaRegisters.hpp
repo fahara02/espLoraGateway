@@ -162,6 +162,13 @@ struct Register
 	{
 		value = v;
 	}
+	void setField(uint8_t mask, uint8_t newValue)
+	{
+	}
+	void updateBits(uint8_t mask, uint8_t newValue)
+	{
+		value = (value & ~mask) | (newValue & mask);
+	}
 
   private:
 	uint8_t value;

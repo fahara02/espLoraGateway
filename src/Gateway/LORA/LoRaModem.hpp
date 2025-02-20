@@ -1,27 +1,73 @@
 
 #ifndef LORA_MODEM_HPP
-#define LORA_MODEM_HPP
+	#define LORA_MODEM_HPP
 
-#include "LoRaDefines.hpp"
-#include "LoRaBoards.hpp"
-#include "LoRaStat.hpp"
-#include "SPIBus.hpp"
-#include "LoRaRegisters.hpp"
-
+	#include "LoRaDefines.hpp"
+	#include "LoRaBoards.hpp"
+	#include "LoRaStat.hpp"
+	#include "SPIBus.hpp"
+	#include "LoRaRegisters.hpp"
+	#include "Logger.hpp"
+	#define MODEM_TAG "LORA-MODEM"
 namespace LoRa
 {
+
+template<ChipModel Model>
 class LoRaModem
 {
   public:
 	using rMode = LongRangeMode;
 	using tMode = TransceiverModes;
-	LoRaModem(BoardModel model, uint8_t address, LoRaBands band, const uint8_t bandIndex);
+	using Bandwidth = typename SignalBandWidth<Model>::Type;
+
+	LoRaModem<Model>(BoardModel model, uint8_t address, LoRaBands band, const uint8_t bandIndex) :
+		model_(model), address_(address), spiBus_(Core::SPIBus::getInstance(address_)),
+		frequencytable_(getLoRaFrequencies(band)),
+		frequencyPlan_((frequencytable_ && bandIndex < LORA_MAX_CHANNEL) ?
+						   (*frequencytable_)[bandIndex] :
+						   FrequencyPlan{}),
+		pins_(LoRaBoard::getPinConfig(model_))
+	{
+		init();
+	}
 
 	void startReceiver();
-	void setBandWidth(uint8_t sf, uint8_t crc);
+
+	uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
+	{
+		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
+		uint8_t bw_value = 0;
+		uint8_t mask = 0;
+
+		if constexpr(is_sx1272_plus_v<Model>)
+		{
+			bw_value = static_cast<uint8_t>(bw) << 6;
+			mask = 0b11000000;
+		}
+		else if constexpr(is_sx1276_plus_v<Model>)
+		{
+			bw_value = static_cast<uint8_t>(bw) << 4;
+			mask = 0b11110000;
+		}
+		else
+		{
+			LOG::ERROR(MODEM_TAG, "Unsupported chip model for bandwidth setting");
+			return 0;
+		}
+
+		if(sendSPI)
+		{
+			spiBus_.writeRegister(reg->address, bw_value);
+		}
+
+		reg->updateBits(mask, bw_value);
+		return bw_value;
+	}
+
 	void setBitRate(uint8_t sf, uint8_t crc);
 	void setFrequency(uint32_t freq);
 	void setPow(uint8_t pow);
+
 	template<typename Mode>
 	void opmode(const Mode& mode);
 
@@ -32,6 +78,7 @@ class LoRaModem
 
   private:
 	BoardModel model_;
+	ChipModel chipModel_ = Model;
 	uint8_t address_;
 	Core::SPIBus& spiBus_;
 	const LoRaFreqTable* frequencytable_;
@@ -48,6 +95,7 @@ class LoRaModem
 	StatisticsLevel level_{StatisticsLevel::NONE};
 	ModemStats stats_;
 	bool initialised_ = false;
+
 	struct LoraDown
 	{
 		uint32_t tmst; // Timestamp (will ignore time), time to output
@@ -95,18 +143,32 @@ class LoRaModem
 		etl::array<uint8_t, MAX_LORA_PAYLOAD> payload;
 	} LoraUp;
 
-	void init();
 	void initLoraModem();
 	void initDown(struct LoraDown* LoraDown);
 	void txLoraModem(struct LoraDown* LoraDown);
 	void rxLoraModem();
 	void cadScanner();
-	const LoRaFreqTable* getLoRaFrequencies(LoRaBands band);
+	void init()
 
-	// void ICACHE_RAM_ATTR Interrupt_0();
-	// void ICACHE_RAM_ATTR Interrupt_1();
-	// void ICACHE_RAM_ATTR Interrupt_2();
+	{
+		if(!initialised_)
+		{
+			stats_.getStat(StatisticsLevel::MESSAGE_STAT_LOCAL_SERVER)->reset();
+			stats_.getStat(StatisticsLevel::GATEWAY_STAT_CHANNEL)->reset();
+			initialised_ = true;
+		}
+	}
+	const LoRaFreqTable* getLoRaFrequencies(LoRaBands band)
+	{
+		auto it = LoRaFrequencies.find(band);
+		return (it != LoRaFrequencies.end()) ? &(it->second) : nullptr;
+	}
 };
+
 } // namespace LoRa
 
 #endif // LORA_MODEM_HPP
+
+// void ICACHE_RAM_ATTR Interrupt_0();
+// void ICACHE_RAM_ATTR Interrupt_1();
+// void ICACHE_RAM_ATTR Interrupt_2();

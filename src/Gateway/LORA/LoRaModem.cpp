@@ -1,36 +1,45 @@
 #include "LoRaModem.hpp"
 namespace LoRa
 {
-LoRaModem::LoRaModem(BoardModel model, uint8_t address, LoRaBands band, const uint8_t bandIndex) :
-	model_(model), address_(address), spiBus_(Core::SPIBus::getInstance(address_)),
-	frequencytable_(getLoRaFrequencies(band)),
-	frequencyPlan_((frequencytable_ && bandIndex < LORA_MAX_CHANNEL) ?
-					   (*frequencytable_)[bandIndex] :
-					   FrequencyPlan{}),
-	pins_(LoRaBoard::getPinConfig(model_))
-{
-	init();
-}
 
-const LoRaFreqTable* LoRaModem::getLoRaFrequencies(LoRaBands band)
-{
-	auto it = LoRaFrequencies.find(band);
-	return (it != LoRaFrequencies.end()) ? &(it->second) : nullptr;
-}
-void LoRaModem::init()
+// template<ChipModel Model>
+// uint8_t LoRaModem<Model>::setBandWidth(typename LoRaModem<Model>::Bandwidth& bw, bool sendSPI)
+// {
+// 	auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
+// 	uint8_t bw_value = 0;
+// 	uint8_t mask = 0;
 
+// 	if constexpr(is_sx1272_plus_v<Model>) // Check if model is SX1272+
+// 	{
+// 		bw_value = static_cast<uint8_t>(bw) << 6;
+// 		mask = 0b11000000; // Mask for bits 7-6
+// 	}
+// 	else if constexpr(is_sx1276_plus_v<Model>) // Check if model is SX1276+
+// 	{
+// 		bw_value = static_cast<uint8_t>(bw) << 4;
+// 		mask = 0b11110000; // Mask for bits 7-4
+// 	}
+// 	else
+// 	{
+// 		LOG::ERROR(MODEM_TAG, "Unsupported chip model for bandwidth setting");
+// 		return 0;
+// 	}
+
+// 	if(sendSPI)
+// 	{
+// 		spiBus_.writeRegister(reg->address, bw_value);
+// 	}
+
+// 	reg->updateBits(mask, bw_value);
+// 	return bw_value;
+// }
+
+template<ChipModel Model>
+void LoRaModem<Model>::setBitRate(uint8_t sf, uint8_t crc)
 {
-	if(!initialised_)
-	{
-		stats_.getStat(StatisticsLevel::MESSAGE_STAT_LOCAL_SERVER)->reset();
-		stats_.getStat(StatisticsLevel::GATEWAY_STAT_CHANNEL)->reset();
-		initialised_ = true;
-	}
 }
-void LoRaModem::setBitRate(uint8_t sf, uint8_t crc)
-{
-}
-void LoRaModem::setFrequency(uint32_t freq)
+template<ChipModel Model>
+void LoRaModem<Model>::setFrequency(uint32_t freq)
 {
 	opmode<tMode>(tMode::STANDBY);
 
@@ -63,16 +72,16 @@ void LoRaModem::setFrequency(uint32_t freq)
 	spiBus_.writeRegister(fMID->address, static_cast<uint8_t>((temp_bytes >> 8) & 0xFF)); // MID
 	spiBus_.writeRegister(fLSB->address, static_cast<uint8_t>((temp_bytes >> 0) & 0xFF)); // LSB
 }
-
+template<ChipModel Model>
 template<typename Mode>
-void LoRaModem::opmode(const Mode& mode)
+void LoRaModem<Model>::opmode(const Mode& mode)
 {
 	auto reg = registers_.getRegister(REG::OPMODE);
 	uint8_t setValue = reg->setOptMode<REG::OPMODE>(mode);
 	spiBus_.writeRegister(reg->address, setValue & 0xFF);
 }
-
-void LoRaModem::hop()
+template<ChipModel Model>
+void LoRaModem<Model>::hop()
 {
 	opmode<tMode>(tMode::STANDBY);
 }

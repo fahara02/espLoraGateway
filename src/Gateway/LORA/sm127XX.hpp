@@ -2,6 +2,7 @@
 #define SM127XX_HPP
 #include <cstdint>
 #include "etl/type_traits.h"
+#include "etl/optional.h"
 
 namespace LoRa
 {
@@ -98,6 +99,42 @@ enum class SignalBandwidth_76 : uint8_t
 	BW_500_KHZ = 0b1001, // 500 kHz
 };
 
+// struct Bandwidth
+// {
+// 	enum class Type
+// 	{
+// 		BW_72,
+// 		BW_76
+// 	};
+
+// 	Type type_;
+// 	etl::optional<SignalBandwidth_72> bw72_;
+// 	etl::optional<SignalBandwidth_76> bw76_;
+
+// 	Bandwidth(SignalBandwidth_72 bw) : type_(Type::BW_72), bw72_(bw)
+// 	{
+// 	}
+
+// 	Bandwidth(SignalBandwidth_76 bw) : type_(Type::BW_76), bw76_(bw)
+// 	{
+// 	}
+
+// 	etl::optional<SignalBandwidth_72> get72() const
+// 	{
+// 		return (type_ == Type::BW_72) ? bw72_ : etl::optional<SignalBandwidth_72>{};
+// 	}
+
+// 	etl::optional<SignalBandwidth_76> get76() const
+// 	{
+// 		return (type_ == Type::BW_76) ? bw76_ : etl::optional<SignalBandwidth_76>{};
+// 	}
+
+// 	Type getType() const
+// 	{
+// 		return type_;
+// 	}
+// };
+
 template<ChipModel Model, typename Enable = void>
 struct SignalBandWidth
 {
@@ -140,15 +177,29 @@ enum class LowDataRateOptimize : uint8_t
 	ENABLE = 1,
 };
 
+template<ChipModel Model, typename Enable = void>
+struct ModemConfig1;
+
 template<ChipModel Model>
-struct ModemConfig1
+struct ModemConfig1<Model, typename std::enable_if<is_sx1272_plus_v<Model>>::type>
 {
-	SignalBandWidth<Model> bw;
+	using BandwidthType = typename SignalBandWidth<Model>::Type;
+
+	BandwidthType bw;
 	CodingRate coding_rate;
 	HeaderMode header_mode;
-	// enable if Model is 1272/73
-	CRCMode mode;
-	LowDataRateOptimize ldro;
+	CRCMode mode; // Enabled only for SX1272/SX1273
+	LowDataRateOptimize ldro; // Enabled only for SX1272/SX1273
+};
+
+template<ChipModel Model>
+struct ModemConfig1<Model, typename std::enable_if<is_sx1276_plus_v<Model>>::type>
+{
+	using BandwidthType = typename SignalBandWidth<Model>::Type;
+
+	BandwidthType bw;
+	CodingRate coding_rate;
+	HeaderMode header_mode;
 };
 
 } // namespace LoRa
