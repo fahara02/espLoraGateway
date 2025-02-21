@@ -25,6 +25,36 @@ static constexpr bool is_sx1276_plus_v = Model == ChipModel::SX1276 || Model == 
 
 template<ChipModel Model>
 static constexpr bool is_sx1272_plus_v = Model == ChipModel::SX1272 || Model == ChipModel::SX1273;
+template<ChipModel Model>
+static constexpr bool is_sx162_plus_v = Model == ChipModel::SX1261 || Model == ChipModel::SX1262;
+template<ChipModel Model>
+static constexpr bool is_rfm_plus_v = Model == ChipModel::RFM95;
+
+struct ChipSeries
+{
+	bool isRFMSeries;
+	bool isSm62Series;
+	bool isSm72Series;
+	bool isSm76Series;
+
+	constexpr bool operator==(const ChipSeries& other) const
+	{
+		return isRFMSeries == other.isRFMSeries && isSm62Series == other.isSm62Series &&
+			   isSm72Series == other.isSm72Series && isSm76Series == other.isSm76Series;
+	}
+};
+
+constexpr ChipSeries RFM_Series = {true, false, false, false};
+constexpr ChipSeries Sm62_Series = {false, true, false, false};
+constexpr ChipSeries Sm72_Series = {false, false, true, false};
+constexpr ChipSeries Sm76_Series = {false, false, false, true};
+
+template<ChipModel Model>
+constexpr ChipSeries GetChipType()
+{
+	return {is_rfm_plus_v<Model>, is_sx162_plus_v<Model>, is_sx1272_plus_v<Model>,
+			is_sx1276_plus_v<Model>};
+}
 
 enum class LongRangeMode : uint8_t
 {
@@ -179,11 +209,12 @@ struct ConfigParams
 	uint8_t shift;
 	uint8_t mask;
 };
+
 template<typename FieldType>
 struct FieldConfig
 {
 	FieldType field; // Field identifier (e.g. ModemConfig1Field, or another enum)
-	ChipModel chip; // Chip model for which these parameters apply
+	ChipSeries chipType;
 	ConfigParams params; // The bit shift and mask for this field
 };
 

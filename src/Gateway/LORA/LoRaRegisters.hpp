@@ -80,18 +80,18 @@ struct RegInfo
 
 constexpr ModemConfig1FieldConfig modemConfig1FieldConfigs[] = {
 	// Bandwidth:
-	{ModemConfig1Field::Bandwidth, ChipModel::SX1272, {6, 0b11000000}},
-	{ModemConfig1Field::Bandwidth, ChipModel::SX1276, {4, 0b11110000}},
+	{ModemConfig1Field::Bandwidth, Sm72_Series, {6, 0b11000000}},
+	{ModemConfig1Field::Bandwidth, Sm76_Series, {4, 0b11110000}},
 	// Coding Rate:
-	{ModemConfig1Field::CodingRate, ChipModel::SX1272, {3, 0b00111000}},
-	{ModemConfig1Field::CodingRate, ChipModel::SX1276, {1, 0b00001110}},
+	{ModemConfig1Field::CodingRate, Sm72_Series, {3, 0b00111000}},
+	{ModemConfig1Field::CodingRate, Sm76_Series, {1, 0b00001110}},
 	// HeaderMode
-	{ModemConfig1Field::HeaderMode, ChipModel::SX1272, {2, 0b00000100}},
-	{ModemConfig1Field::HeaderMode, ChipModel::SX1276, {0, 0b00000001}},
-	// CRC (only defined for SX1272 ):
-	{ModemConfig1Field::CRC, ChipModel::SX1272, {1, 0b00000010}},
-	// Low Data Optimization (only defined for SX1272 ):
-	{ModemConfig1Field::LowDataOptimization, ChipModel::SX1272, {0, 0b00000001}}};
+	{ModemConfig1Field::HeaderMode, Sm72_Series, {2, 0b00000100}},
+	{ModemConfig1Field::HeaderMode, Sm76_Series, {0, 0b00000001}},
+	// CRC (only defined for Sm72 series):
+	{ModemConfig1Field::CRC, Sm72_Series, {1, 0b00000010}},
+	// Low Data Optimization (only defined for Sm72 series):
+	{ModemConfig1Field::LowDataOptimization, Sm72_Series, {0, 0b00000001}}};
 
 struct Register
 {
@@ -240,39 +240,38 @@ struct Register
 			case ModemConfig1Field::Bandwidth:
 				params = is_sx1272_plus_v<Model> ?
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::Bandwidth,
-												  ChipModel::SX1272) :
+												  Sm72_Series) :
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::Bandwidth,
-												  ChipModel::SX1276);
+												  Sm76_Series);
 				break;
 			case ModemConfig1Field::CodingRate:
 				params = is_sx1272_plus_v<Model> ?
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CodingRate,
-												  ChipModel::SX1272) :
+												  Sm72_Series) :
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CodingRate,
-												  ChipModel::SX1276);
+												  Sm76_Series);
 				break;
 			case ModemConfig1Field::HeaderMode:
 				params = is_sx1272_plus_v<Model> ?
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::HeaderMode,
-												  ChipModel::SX1272) :
+												  Sm72_Series) :
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::HeaderMode,
-												  ChipModel::SX1276);
+												  Sm76_Series);
 				break;
 			case ModemConfig1Field::CRC:
 				params = is_sx1272_plus_v<Model> ?
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CRC,
-												  ChipModel::SX1272) :
+												  Sm72_Series) :
 							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CRC,
-												  ChipModel::SX1276);
+												  Sm76_Series);
 				break;
 			case ModemConfig1Field::LowDataOptimization:
-				params = is_sx1272_plus_v<Model> ?
-							 getFieldConfigParams(REG::MODEM_CONFIG1,
-												  ModemConfig1Field::LowDataOptimization,
-												  ChipModel::SX1272) :
-							 getFieldConfigParams(REG::MODEM_CONFIG1,
-												  ModemConfig1Field::LowDataOptimization,
-												  ChipModel::SX1276);
+				params =
+					is_sx1272_plus_v<Model> ?
+						getFieldConfigParams(REG::MODEM_CONFIG1,
+											 ModemConfig1Field::LowDataOptimization, Sm72_Series) :
+						getFieldConfigParams(REG::MODEM_CONFIG1,
+											 ModemConfig1Field::LowDataOptimization, Sm76_Series);
 				break;
 		}
 
@@ -343,7 +342,7 @@ struct Register
 	}
 
 	template<typename FieldType>
-	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, ChipModel chip)
+	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, ChipSeries chipType)
 	{
 		const RegInfo* info = lookupRegInfo(r);
 		if(info && info->fieldConfigs)
@@ -354,7 +353,7 @@ struct Register
 
 			for(size_t i = 0; i < info->fieldConfigCount; ++i)
 			{
-				if(configs[i].field == field && configs[i].chip == chip)
+				if(configs[i].field == field && configs[i].chipType == chipType)
 				{
 					return configs[i].params;
 				}
