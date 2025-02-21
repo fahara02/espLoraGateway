@@ -75,6 +75,30 @@ struct ConfigureOptMode<ChipModel::SX1276>
 	TransceiverModes transceiver;
 };
 
+enum class CodingRate : uint8_t
+{
+	ERROR_CODING_4_5 = 0x1,
+	ERROR_CODING_4_6 = 0x2,
+	ERROR_CODING_4_7 = 0x3,
+	ERROR_CODING_4_8 = 0x4,
+};
+
+enum class HeaderMode : uint8_t
+{
+	EXPLICIT = 0,
+	IMPLICIT = 1,
+};
+enum class CRCMode : uint8_t
+{
+	DISABLE = 0,
+	ENABLE = 1,
+};
+enum class LowDataRateOptimize : uint8_t
+{
+	DISABLE = 0,
+	ENABLE = 1,
+};
+
 enum class SignalBandwidth_72 : uint8_t
 {
 	// SX1272/73 bandwidth settings (2 bits)
@@ -116,31 +140,6 @@ struct SignalBandWidth<Model, typename etl::enable_if<(is_sx1276_plus_v<Model>)>
 {
 	using Type = SignalBandwidth_76;
 };
-
-enum class CodingRate : uint8_t
-{
-	ERROR_CODING_4_5 = 0x1,
-	ERROR_CODING_4_6 = 0x2,
-	ERROR_CODING_4_7 = 0x3,
-	ERROR_CODING_4_8 = 0x4,
-};
-
-enum class HeaderMode : uint8_t
-{
-	EXPLICIT = 0,
-	IMPLICIT = 1,
-};
-enum class CRCMode : uint8_t
-{
-	DISABLE = 0,
-	ENABLE = 1,
-};
-enum class LowDataRateOptimize : uint8_t
-{
-	DISABLE = 0,
-	ENABLE = 1,
-};
-
 template<ChipModel Model, typename Enable = void>
 struct ModemConfig1;
 

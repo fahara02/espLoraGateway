@@ -33,25 +33,17 @@ class LoRaModem
 
 	void startReceiver();
 	// Modem Config1 Registers Functions
+
 	uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
 	{
-		Register::ConfigParams params;
+		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
+		uint8_t setValue = reg->template setBandWidth<REG::MODEM_CONFIG1, Model>(bw);
 
-		if constexpr(is_sx1272_plus_v<Model>)
+		if(sendSPI)
 		{
-			params = {6, 0b11000000}; // Shift = 6, Mask = 0b11000000
+			spiBus_.writeRegister(reg->address, setValue);
 		}
-		else if constexpr(is_sx1276_plus_v<Model>)
-		{
-			params = {4, 0b11110000}; // Shift = 4, Mask = 0b11110000
-		}
-		else
-		{
-			LOG::ERROR(MODEM_TAG, "Unsupported chip model for bandwidth setting");
-			return 0;
-		}
-
-		return updateModemConfig(REG::MODEM_CONFIG1, static_cast<uint8_t>(bw), params, sendSPI);
+		return setValue;
 	}
 	uint8_t setCodingRate(CodingRate rate, bool sendSPI);
 	uint8_t setImplicitHeader(HeaderMode mode, bool sendSPI);

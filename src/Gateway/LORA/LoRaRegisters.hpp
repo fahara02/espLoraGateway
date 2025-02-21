@@ -4,6 +4,8 @@
 #include "sm127XX.hpp"
 #include "etl/array.h"
 #include "etl/optional.h"
+#include "Logger.hpp"
+#define LORA_REG "LORA_REGISTER"
 
 namespace LoRa
 {
@@ -79,6 +81,8 @@ struct Register
 		uint8_t shift;
 		uint8_t mask;
 	};
+	template<ChipModel Model>
+	using Bandwidth = typename SignalBandWidth<Model>::Type;
 	constexpr Register() :
 		model(ChipModel::SX1276), reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value(0)
 	{
@@ -88,6 +92,7 @@ struct Register
 		value(getDefaultValue(r, m))
 	{
 	}
+
 	constexpr uint8_t getRegAddress(REG r)
 	{
 		switch(r)
@@ -349,6 +354,49 @@ struct Register
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
+		setBandWidth(Bandwidth<Model>& bw)
+	{
+		ConfigParams params;
+
+		if constexpr(is_sx1272_plus_v<Model>)
+		{
+			params = {6, 0b11000000}; // Shift = 6, Mask = 0b11000000
+		}
+		else if constexpr(is_sx1276_plus_v<Model>)
+		{
+			params = {4, 0b11110000}; // Shift = 4, Mask = 0b11110000
+		}
+		else
+		{
+			LOG::ERROR(LORA_REG, "Unsupported chip model for bandwidth setting");
+			return 0;
+		}
+
+		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(bw), params);
+	}
+	template<REG T, ChipModel Model>
+	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCodingRate(CodingRate rate)
+	{
+		ConfigParams params;
+
+		if constexpr(is_sx1272_plus_v<Model>)
+		{
+			params = {3, 0b00111000}; // Shift = 3, Mask = 0b00111000
+		}
+		else if constexpr(is_sx1276_plus_v<Model>)
+		{
+			params = {1, 0b00001110}; // Shift = 1, Mask = 0b00001110
+		}
+		else
+		{
+			LOG::ERROR(LORA_REG, "Unsupported chip model for bandwidth setting");
+			return 0;
+		}
+
+		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(rate), params);
+	}
+	template<REG T, ChipModel Model>
+	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
 		configureModem(const ModemConfig1<Model>& config)
 	{
 		// Clear only the bits being modified while preserving others
@@ -397,6 +445,14 @@ struct Register
 
   private:
 	uint8_t value;
+	template<REG T>
+	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
+		updateModemConfig(uint8_t value, const ConfigParams& params)
+	{
+		uint8_t final_value = value << params.shift;
+		updateBits(params.mask, final_value);
+		return final_value;
+	}
 };
 template<ChipModel Model>
 class LoRaRegisters
