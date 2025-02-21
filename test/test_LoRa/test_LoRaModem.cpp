@@ -15,31 +15,31 @@ void MockLoRaModem::testOptMode()
 	// Test 1: Using LongRangeMode only.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
-		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).
+		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 1
 		uint8_t result = reg.updateOptMode(Field_OptMode::LongRangeMode, LongRangeMode::LORA);
-		TEST_ASSERT_EQUAL_UINT8(0x80, result);
-
-		// Calling with RX; assuming RX is defined as 5.
-		result = reg.setOptMode<REG::OPMODE>(TransceiverModes::RX);
-		TEST_ASSERT_EQUAL_UINT8(0x85, result);
-		result = reg.setOptMode<REG::OPMODE>(TransceiverModes::SLEEP);
-		TEST_ASSERT_EQUAL_UINT8(0x80, result);
-		result = reg.setOptMode<REG::OPMODE>(TransceiverModes::STANDBY);
 		TEST_ASSERT_EQUAL_UINT8(0x81, result);
-		result = reg.setOptMode<REG::OPMODE>(TransceiverModes::FSRx);
+
+		// Calling with RX;
+		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::RX);
+		TEST_ASSERT_EQUAL_UINT8(0x85, result);
+		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::SLEEP);
+		TEST_ASSERT_EQUAL_UINT8(0x80, result);
+		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::STANDBY);
+		TEST_ASSERT_EQUAL_UINT8(0x81, result);
+		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::FSRx);
 		TEST_ASSERT_EQUAL_UINT8(0x84, result);
-		result = reg.setOptMode<REG::OPMODE>(LongRangeMode::FSK_OOK);
+		result = reg.updateOptMode(Field_OptMode::LongRangeMode, LongRangeMode::FSK_OOK);
 		TEST_ASSERT_EQUAL_UINT8(0x04, result);
 	}
-	// Test 2: Using LongRangeMode only.
+	// Test 2: Using Lowfrequency mode only.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
 
-		// Calling with RX; assuming RX is defined as 5.
-		uint8_t result = reg.setOptMode<REG::OPMODE, LoRa::ChipModel::SX1276>(
-			LoRa::LowFreqMode::LOW_FREQUENCY_MODE);
+		// Calling with LOW_FREQUENCY_MODE=1; i.e 1000 = 8 and default value is 1 so 1001=9
+		uint8_t result =
+			reg.updateOptMode(Field_OptMode::LowFreqMode, LowFreqMode::LOW_FREQUENCY_MODE);
 
-		TEST_ASSERT_EQUAL_UINT8(0x08, result);
+		TEST_ASSERT_EQUAL_UINT8(0x09, result);
 	}
 	// Test 4: Using the ConfigureOptMode structure.
 	{

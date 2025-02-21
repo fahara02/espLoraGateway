@@ -120,12 +120,12 @@ struct Register
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
 
 	constexpr Register() :
-		model(ChipModel::SX1276), reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value(0)
+		model(ChipModel::SX1276), reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value_(0)
 	{
 	}
 	constexpr Register(ChipModel m, REG r) :
 		model(m), reg(r), mode(getRegMode(r)), address(getRegAddress(r)),
-		value(getDefaultValue(r, m))
+		value_(getDefaultValue(r, m))
 	{
 	}
 	constexpr uint8_t getRegAddress(REG r)
@@ -145,71 +145,72 @@ struct Register
 	}
 
 	template<REG Reg, typename Field>
-	uint8_t updateRegisterField(const Field field, uint8_t value)
+	uint8_t updateRegisterField(const Field field, uint8_t new_value)
 	{
 		const ChipSeries series = isSx1272Plus(model) ? ChipSeries::SM72 : ChipSeries::SM76;
 
 		ConfigParams params = getFieldConfigParams(Reg, field, series);
 
-		uint8_t final_value = value << params.shift;
-		updateBits(params.mask, final_value);
+		uint8_t shifted_value = new_value << params.shift;
+		updateBits(params.mask, shifted_value);
 
-		return final_value;
+		return value_;
 	}
 
 	template<typename ValueType>
 
-	uint8_t updateOptMode(const Field_OptMode field, ValueType value)
+	uint8_t updateOptMode(const Field_OptMode field, ValueType new_value)
 	{
-		return updateRegisterField<REG::OPMODE, Field_OptMode>(field, static_cast<uint8_t>(value));
+		return updateRegisterField<REG::OPMODE, Field_OptMode>(field,
+															   static_cast<uint8_t>(new_value));
 	}
 
 	template<typename ValueType>
-	uint8_t updateModemConfig(const Field_ModemConfig1 field, ValueType value)
+	uint8_t updateModemConfig(const Field_ModemConfig1 field, ValueType new_value)
 	{
 		return updateRegisterField<REG::MODEM_CONFIG1, Field_ModemConfig1>(
-			field, static_cast<uint8_t>(value));
+			field, static_cast<uint8_t>(new_value));
 	}
 
 	template<REG T>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type setOptMode(const LongRangeMode mode)
 	{
-		value = (value & ~(1 << 7)) | ((static_cast<uint8_t>(mode) & 0b1) << 7);
-		return value;
+		value_ = (value_ & ~(1 << 7)) | ((static_cast<uint8_t>(mode) & 0b1) << 7);
+		return value_;
 	}
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<(T == REG::OPMODE && is_sx1276_plus_v<Model>), uint8_t>::type
 		setOptMode(const LowFreqMode mode)
 	{
-		return value = (value & ~(1 << 3)) | (static_cast<uint8_t>(mode) & 0b1) << 3;
+		return value_ = (value_ & ~(1 << 3)) | (static_cast<uint8_t>(mode) & 0b1) << 3;
 	}
 
 	template<REG T>
 	typename etl::enable_if<(T == REG::OPMODE), uint8_t>::type
 		setOptMode(const TransceiverModes mode)
 	{
-		value = (value & ~0b111) | (static_cast<uint8_t>(mode) & 0b111);
-		return value;
+		value_ = (value_ & ~0b111) | (static_cast<uint8_t>(mode) & 0b111);
+		return value_;
 	}
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
 		setOptMode(const Setting_OptMode<Model>& optmode)
 	{
-		value = (value & ~((1 << 7) | (1 << 6) | (1 << 3) | 0b111));
+		value_ = (value_ & ~((1 << 7) | (1 << 6) | (1 << 3) | 0b111));
 
-		value |= ((static_cast<uint8_t>(optmode.long_range) & 0b1) << 7) |
-				 ((static_cast<uint8_t>(optmode.shared_reg) & 0b1) << 6);
+		value_ |= ((static_cast<uint8_t>(optmode.long_range) & 0b1) << 7) |
+				  ((static_cast<uint8_t>(optmode.shared_reg) & 0b1) << 6);
 
 		if constexpr(is_sx1276_plus_v<Model>)
 		{
-			value |= (static_cast<uint8_t>(optmode.low_freq) & 0b1) << 3;
+			value_ |= (static_cast<uint8_t>(optmode.low_freq) & 0b1) << 3;
 		}
 
-		value |= (static_cast<uint8_t>(optmode.transceiver) & 0b111); // Bits [2:0]
+		value_ |= (static_cast<uint8_t>(optmode.transceiver) & 0b111); // Bits [2:0]
 
-		return value;
+		return value_;
 	}
 
 	template<REG T, ChipModel Model>
@@ -220,54 +221,54 @@ struct Register
 		if constexpr(is_sx1276_plus_v<Model>)
 		{
 			// SX1276+ models (4 fields)
-			value &= ~((0b1111 << 4) | (0b111 << 1) | (0b1));
+			value_ &= ~((0b1111 << 4) | (0b111 << 1) | (0b1));
 
-			value |= (static_cast<uint8_t>(config.bw) << 4) | // Bits [7:4]
-					 (static_cast<uint8_t>(config.coding_rate) << 1) | // Bits [3:1]
-					 (static_cast<uint8_t>(config.header_mode)); // Bit [0]
+			value_ |= (static_cast<uint8_t>(config.bw) << 4) | // Bits [7:4]
+					  (static_cast<uint8_t>(config.coding_rate) << 1) | // Bits [3:1]
+					  (static_cast<uint8_t>(config.header_mode)); // Bit [0]
 		}
 		else if constexpr(Model == ChipModel::SX1272 || Model == ChipModel::SX1273)
 		{
 			// SX1272/73 models (6 fields)
-			value &= ~((0b11 << 6) | (0b111 << 3) | (0b1 << 2) | (0b1 << 1) | (0b1));
-			value |= (static_cast<uint8_t>(config.bw) << 6) | // Bits [7:6]
-					 (static_cast<uint8_t>(config.coding_rate) << 3) | // Bits [5:3]
-					 (static_cast<uint8_t>(config.header_mode) << 2) | // Bit [2]
-					 (static_cast<uint8_t>(config.mode) << 1) | // Bit [1]
-					 (static_cast<uint8_t>(config.ldro) & 0b1); // Bit [0]
+			value_ &= ~((0b11 << 6) | (0b111 << 3) | (0b1 << 2) | (0b1 << 1) | (0b1));
+			value_ |= (static_cast<uint8_t>(config.bw) << 6) | // Bits [7:6]
+					  (static_cast<uint8_t>(config.coding_rate) << 3) | // Bits [5:3]
+					  (static_cast<uint8_t>(config.header_mode) << 2) | // Bit [2]
+					  (static_cast<uint8_t>(config.mode) << 1) | // Bit [1]
+					  (static_cast<uint8_t>(config.ldro) & 0b1); // Bit [0]
 		}
 
-		return value;
+		return value_;
 	}
 
 	void reset()
 	{
-		value = getDefaultValue(reg, model);
+		value_ = getDefaultValue(reg, model);
 	}
 	uint8_t getValue() const
 	{
-		return value;
+		return value_;
 	}
 	void setValue(uint8_t v)
 	{
-		value = v;
+		value_ = v;
 	}
 	void setField(uint8_t mask, uint8_t newValue)
 	{
 	}
 	void updateBits(uint8_t mask, uint8_t newValue)
 	{
-		value = (value & ~mask) | (newValue & mask);
+		value_ = (value_ & ~mask) | (newValue & mask);
 	}
 
 	// Common helper that performs the shared functionality.
 
   private:
-	uint8_t value;
+	uint8_t value_;
 
 	static constexpr etl::array<RegInfo, REG_COUNT> regTable{
 		{{REG::FIFO, 0x00, REG_MODE::READ_WRITE, 0x00},
-		 {REG::OPMODE, 0x01, REG_MODE::READ_WRITE, 0x00, OptModeFieldConfigs,
+		 {REG::OPMODE, 0x01, REG_MODE::READ_WRITE, 0x01, OptModeFieldConfigs,
 		  sizeof(OptModeFieldConfigs) / sizeof(OptModeFieldConfigs[0])},
 		 {REG::FRF_MSB, 0x06, REG_MODE::READ_WRITE, 0x6C},
 		 {REG::FRF_MID, 0x07, REG_MODE::READ_WRITE, 0x80},
