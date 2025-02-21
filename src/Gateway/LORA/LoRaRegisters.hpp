@@ -67,24 +67,39 @@ enum class REG
 	VERSION,
 	PADAC
 };
+
 struct RegInfo
 {
 	REG reg;
 	uint8_t address;
 	REG_MODE mode;
 	uint8_t defaultValue;
+	const void* fieldConfigs;
+	size_t fieldConfigCount;
 };
+
+constexpr ModemConfig1FieldConfig modemConfig1FieldConfigs[] = {
+	// Bandwidth:
+	{ModemConfig1Field::Bandwidth, ChipModel::SX1272, {6, 0b11000000}},
+	{ModemConfig1Field::Bandwidth, ChipModel::SX1276, {4, 0b11110000}},
+	// Coding Rate:
+	{ModemConfig1Field::CodingRate, ChipModel::SX1272, {3, 0b00111000}},
+	{ModemConfig1Field::CodingRate, ChipModel::SX1276, {1, 0b00001110}},
+	// HeaderMode
+	{ModemConfig1Field::HeaderMode, ChipModel::SX1272, {2, 0b00000100}},
+	{ModemConfig1Field::HeaderMode, ChipModel::SX1276, {0, 0b00000001}},
+	// CRC (only defined for SX1272 ):
+	{ModemConfig1Field::CRC, ChipModel::SX1272, {1, 0b00000010}},
+	// Low Data Optimization (only defined for SX1272 ):
+	{ModemConfig1Field::LowDataOptimization, ChipModel::SX1272, {0, 0b00000001}}};
+
 struct Register
 {
 	const ChipModel model;
 	const REG reg;
 	const REG_MODE mode;
 	const uint8_t address;
-	struct ConfigParams
-	{
-		uint8_t shift;
-		uint8_t mask;
-	};
+
 	template<ChipModel Model>
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
 
@@ -172,84 +187,70 @@ struct Register
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
 		setBandWidth(Bandwidth<Model>& bw)
 	{
-		ConfigParams params;
-
-		if constexpr(is_sx1272_plus_v<Model>)
-		{
-			params = {6, 0b11000000}; // Shift = 6, Mask = 0b11000000
-		}
-		else if constexpr(is_sx1276_plus_v<Model>)
-		{
-			params = {4, 0b11110000}; // Shift = 4, Mask = 0b11110000
-		}
-		else
-		{
-			LOG::ERROR(LORA_REG, "Unsupported chip model for bandwidth setting");
-			return 0;
-		}
-
-		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(bw), params);
+		return updateModemConfig<REG::MODEM_CONFIG1, Model>(static_cast<uint8_t>(bw),
+															ModemConfig1Field::Bandwidth);
 	}
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCodingRate(CodingRate rate)
-	{
-		ConfigParams params;
+	// template<REG T, ChipModel Model>
+	// typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCodingRate(CodingRate
+	// rate)
+	// {
+	// 	ConfigParams params;
 
-		if constexpr(is_sx1272_plus_v<Model>)
-		{
-			params = {3, 0b00111000}; // Shift = 3, Mask = 0b00111000
-		}
-		else if constexpr(is_sx1276_plus_v<Model>)
-		{
-			params = {1, 0b00001110}; // Shift = 1, Mask = 0b00001110
-		}
-		else
-		{
-			LOG::ERROR(LORA_REG, "Unsupported chip model for bandwidth setting");
-			return 0;
-		}
+	// 	if constexpr(is_sx1272_plus_v<Model>)
+	// 	{
+	// 		params = {3, 0b00111000}; // Shift = 3, Mask = 0b00111000
+	// 	}
+	// 	else if constexpr(is_sx1276_plus_v<Model>)
+	// 	{
+	// 		params = {1, 0b00001110}; // Shift = 1, Mask = 0b00001110
+	// 	}
+	// 	else
+	// 	{
+	// 		LOG::ERROR(LORA_REG, "Unsupported chip model for bandwidth setting");
+	// 		return 0;
+	// 	}
 
-		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(rate), params);
-	}
+	// 	return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(rate), params);
+	// }
 
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCRC(CRCMode mode)
-	{
-		Register::ConfigParams params;
+	// template<REG T, ChipModel Model>
+	// typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCRC(CRCMode mode)
+	// {
+	// 	ConfigParams params;
 
-		if constexpr(is_sx1272_plus_v<Model>)
-		{
-			params = {1, 0b00000010}; // Example values, adjust as needed
-		}
+	// 	if constexpr(is_sx1272_plus_v<Model>)
+	// 	{
+	// 		params = {1, 0b00000010}; // Example values, adjust as needed
+	// 	}
 
-		else
-		{
-			LOG::ERROR(LORA_REG, "Unsupported chip model for CRC setting");
-			return 0;
-		}
+	// 	else
+	// 	{
+	// 		LOG::ERROR(LORA_REG, "Unsupported chip model for CRC setting");
+	// 		return 0;
+	// 	}
 
-		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(mode), params);
-	}
+	// 	return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(mode), params);
+	// }
 
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		setLowDataOptimization(LowDataRateOptimize mode)
-	{
-		Register::ConfigParams params;
+	// template<REG T, ChipModel Model>
+	// typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
+	// 	setLowDataOptimization(LowDataRateOptimize mode)
+	// {
+	// 	ConfigParams params;
 
-		if constexpr(is_sx1272_plus_v<Model>)
-		{
-			params = {0, 0b00000001}; // Example values, adjust as needed
-		}
+	// 	if constexpr(is_sx1272_plus_v<Model>)
+	// 	{
+	// 		params = {0, 0b00000001}; // Example values, adjust as needed
+	// 	}
 
-		else
-		{
-			LOG::ERROR(LORA_REG, "Unsupported chip model for low data optimization");
-			return 0;
-		}
+	// 	else
+	// 	{
+	// 		LOG::ERROR(LORA_REG, "Unsupported chip model for low data optimization");
+	// 		return 0;
+	// 	}
 
-		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(mode), params);
-	}
+	// 	return updateModemConfig<REG::MODEM_CONFIG1, Model>(static_cast<uint8_t>(mode), params);
+	// }
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
@@ -301,10 +302,52 @@ struct Register
 
   private:
 	uint8_t value;
-	template<REG T>
+	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		updateModemConfig(uint8_t value, const ConfigParams& params)
+		updateModemConfig(uint8_t value, const ModemConfig1Field field)
 	{
+		ConfigParams params;
+		switch(field)
+		{
+			case ModemConfig1Field::Bandwidth:
+				params = is_sx1272_plus_v<Model> ?
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::Bandwidth,
+												  ChipModel::SX1272) :
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::Bandwidth,
+												  ChipModel::SX1276);
+				break;
+			case ModemConfig1Field::CodingRate:
+				params = is_sx1272_plus_v<Model> ?
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CodingRate,
+												  ChipModel::SX1272) :
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CodingRate,
+												  ChipModel::SX1276);
+				break;
+			case ModemConfig1Field::HeaderMode:
+				params = is_sx1272_plus_v<Model> ?
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::HeaderMode,
+												  ChipModel::SX1272) :
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::HeaderMode,
+												  ChipModel::SX1276);
+				break;
+			case ModemConfig1Field::CRC:
+				params = is_sx1272_plus_v<Model> ?
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CRC,
+												  ChipModel::SX1272) :
+							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CRC,
+												  ChipModel::SX1276);
+				break;
+			case ModemConfig1Field::LowDataOptimization:
+				params = is_sx1272_plus_v<Model> ?
+							 getFieldConfigParams(REG::MODEM_CONFIG1,
+												  ModemConfig1Field::LowDataOptimization,
+												  ChipModel::SX1272) :
+							 getFieldConfigParams(REG::MODEM_CONFIG1,
+												  ModemConfig1Field::LowDataOptimization,
+												  ChipModel::SX1276);
+				break;
+		}
+
 		uint8_t final_value = value << params.shift;
 		updateBits(params.mask, final_value);
 		return final_value;
@@ -330,7 +373,8 @@ struct Register
 		 {REG::PKT_SNR_VALUE, 0x19, REG_MODE::READ_ONLY, 0x00},
 		 {REG::PKT_RSSI, 0x1A, REG_MODE::READ_ONLY, 0x00},
 		 {REG::HOP_CHANNEL, 0x1C, REG_MODE::READ_ONLY, 0x00},
-		 {REG::MODEM_CONFIG1, 0x1D, REG_MODE::READ_WRITE, 0x00},
+		 {REG::MODEM_CONFIG1, 0x1D, REG_MODE::READ_WRITE, 0x00, modemConfig1FieldConfigs,
+		  sizeof(modemConfig1FieldConfigs) / sizeof(modemConfig1FieldConfigs[0])},
 		 {REG::MODEM_CONFIG2, 0x1E, REG_MODE::READ_WRITE, 0x00},
 		 {REG::SYMB_TIMEOUT_LSB, 0x1F, REG_MODE::READ_WRITE, 0x00},
 		 {REG::PREAMBLE_MSB, 0x20, REG_MODE::READ_WRITE, 0x00},
@@ -365,6 +409,28 @@ struct Register
 			}
 		}
 		return nullptr;
+	}
+
+	template<typename FieldType>
+	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, ChipModel chip)
+	{
+		const RegInfo* info = lookupRegInfo(r);
+		if(info && info->fieldConfigs)
+		{
+			// Cast the void* to the correct type
+			const FieldConfig<FieldType>* configs =
+				static_cast<const FieldConfig<FieldType>*>(info->fieldConfigs);
+
+			for(size_t i = 0; i < info->fieldConfigCount; ++i)
+			{
+				if(configs[i].field == field && configs[i].chip == chip)
+				{
+					return configs[i].params;
+				}
+			}
+		}
+		// Return a default value if no match is found
+		return {0, 0};
 	}
 };
 template<ChipModel Model>

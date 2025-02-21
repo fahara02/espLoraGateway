@@ -140,6 +140,16 @@ struct SignalBandWidth<Model, typename etl::enable_if<(is_sx1276_plus_v<Model>)>
 {
 	using Type = SignalBandwidth_76;
 };
+
+enum class ModemConfig1Field : uint8_t
+{
+	Bandwidth,
+	CodingRate,
+	HeaderMode,
+	CRC,
+	LowDataOptimization
+};
+
 template<ChipModel Model, typename Enable = void>
 struct ModemConfig1;
 
@@ -164,6 +174,20 @@ struct ModemConfig1<Model, typename std::enable_if<is_sx1276_plus_v<Model>>::typ
 	CodingRate coding_rate;
 	HeaderMode header_mode;
 };
+struct ConfigParams
+{
+	uint8_t shift;
+	uint8_t mask;
+};
+template<typename FieldType>
+struct FieldConfig
+{
+	FieldType field; // Field identifier (e.g. ModemConfig1Field, or another enum)
+	ChipModel chip; // Chip model for which these parameters apply
+	ConfigParams params; // The bit shift and mask for this field
+};
+
+using ModemConfig1FieldConfig = FieldConfig<ModemConfig1Field>;
 
 } // namespace LoRa
 #endif
