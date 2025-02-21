@@ -14,6 +14,7 @@ class MockLoRaModem : public LoRaModem<ChipModel::SX1276>
 	{
 	}
 	using Model = LoRa::ChipModel;
+
 	static void runAllTests();
 
   private:

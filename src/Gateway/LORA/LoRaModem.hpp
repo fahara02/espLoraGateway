@@ -32,19 +32,6 @@ class LoRaModem
 	}
 
 	void startReceiver();
-	// Modem Config1 Registers Functions
-
-	// uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
-	// {
-	// 	auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
-	// 	uint8_t setValue = reg->template setBandWidth<REG::MODEM_CONFIG1, Model>(bw);
-
-	// 	if(sendSPI)
-	// 	{
-	// 		spiBus_.writeRegister(reg->address, setValue);
-	// 	}
-	// 	return setValue;
-	// }
 
 	uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
 	{
@@ -70,6 +57,10 @@ class LoRaModem
 	uint8_t receivePkt(uint8_t* payload);
 	bool sendPkt(uint8_t* payLoad, uint8_t payLength);
 	int loraWait(struct LoraDown* LoraDown);
+	const ChipModel getChipModel() const
+	{
+		return chipModel_;
+	}
 
   private:
 	BoardModel model_;

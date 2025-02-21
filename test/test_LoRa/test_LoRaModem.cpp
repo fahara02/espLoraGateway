@@ -61,7 +61,7 @@ void MockLoRaModem::testBandwidth()
 	MockLoRaModem modem;
 
 	// Test for SX1276 (BW_76)
-	using BandwidthType = typename LoRa::LoRaModem<LoRa::ChipModel::SX1276>::Bandwidth;
+	using BandwidthType = typename MockLoRaModem ::Bandwidth;
 	BandwidthType bw = BandwidthType::BW_250_KHZ;
 
 	uint8_t result76 = modem.setBandWidth(bw, false);
