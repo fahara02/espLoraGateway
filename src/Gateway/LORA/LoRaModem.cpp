@@ -2,42 +2,94 @@
 namespace LoRa
 {
 
-// template<ChipModel Model>
-// uint8_t LoRaModem<Model>::setBandWidth(typename LoRaModem<Model>::Bandwidth& bw, bool sendSPI)
-// {
-// 	auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
-// 	uint8_t bw_value = 0;
-// 	uint8_t mask = 0;
+template<ChipModel Model>
+uint8_t LoRaModem<Model>::setCodingRate(CodingRate rate, bool sendSPI)
+{
+	Register::ConfigParams params;
 
-// 	if constexpr(is_sx1272_plus_v<Model>) // Check if model is SX1272+
-// 	{
-// 		bw_value = static_cast<uint8_t>(bw) << 6;
-// 		mask = 0b11000000; // Mask for bits 7-6
-// 	}
-// 	else if constexpr(is_sx1276_plus_v<Model>) // Check if model is SX1276+
-// 	{
-// 		bw_value = static_cast<uint8_t>(bw) << 4;
-// 		mask = 0b11110000; // Mask for bits 7-4
-// 	}
-// 	else
-// 	{
-// 		LOG::ERROR(MODEM_TAG, "Unsupported chip model for bandwidth setting");
-// 		return 0;
-// 	}
+	if constexpr(is_sx1272_plus_v<Model>)
+	{
+		params = {3, 0b00111000}; // Shift = 3, Mask = 0b00111000
+	}
+	else if constexpr(is_sx1276_plus_v<Model>)
+	{
+		params = {1, 0b00001110}; // Shift = 1, Mask = 0b00001110
+	}
+	else
+	{
+		LOG::ERROR(MODEM_TAG, "Unsupported chip model for coding rate setting");
+		return 0;
+	}
 
-// 	if(sendSPI)
-// 	{
-// 		spiBus_.writeRegister(reg->address, bw_value);
-// 	}
-
-// 	reg->updateBits(mask, bw_value);
-// 	return bw_value;
-// }
+	return updateModemConfig(REG::MODEM_CONFIG1, static_cast<uint8_t>(rate), params, sendSPI);
+}
 
 template<ChipModel Model>
-void LoRaModem<Model>::setBitRate(uint8_t sf, uint8_t crc)
+uint8_t LoRaModem<Model>::setImplicitHeader(HeaderMode mode, bool sendSPI)
 {
+	Register::ConfigParams params;
+
+	if constexpr(is_sx1272_plus_v<Model>)
+	{
+		params = {2, 0b00000100}; // Example values, adjust as needed
+	}
+	else if constexpr(is_sx1276_plus_v<Model>)
+	{
+		params = {2, 0b00000100}; // Example values, adjust as needed
+	}
+	else
+	{
+		LOG::ERROR(MODEM_TAG, "Unsupported chip model for implicit header setting");
+		return 0;
+	}
+
+	return updateModemConfig(REG::MODEM_CONFIG1, static_cast<uint8_t>(mode), params, sendSPI);
 }
+
+template<ChipModel Model>
+uint8_t LoRaModem<Model>::setCRC(CRCMode mode, bool sendSPI)
+{
+	Register::ConfigParams params;
+
+	if constexpr(is_sx1272_plus_v<Model>)
+	{
+		params = {1, 0b00000010}; // Example values, adjust as needed
+	}
+	else if constexpr(is_sx1276_plus_v<Model>)
+	{
+		params = {1, 0b00000010}; // Example values, adjust as needed
+	}
+	else
+	{
+		LOG::ERROR(MODEM_TAG, "Unsupported chip model for CRC setting");
+		return 0;
+	}
+
+	return updateModemConfig(REG::MODEM_CONFIG1, static_cast<uint8_t>(mode), params, sendSPI);
+}
+
+template<ChipModel Model>
+uint8_t LoRaModem<Model>::setLowDataOptimization(LowDataRateOptimize mode, bool sendSPI)
+{
+	Register::ConfigParams params;
+
+	if constexpr(is_sx1272_plus_v<Model>)
+	{
+		params = {0, 0b00000001}; // Example values, adjust as needed
+	}
+	else if constexpr(is_sx1276_plus_v<Model>)
+	{
+		params = {0, 0b00000001}; // Example values, adjust as needed
+	}
+	else
+	{
+		LOG::ERROR(MODEM_TAG, "Unsupported chip model for low data optimization");
+		return 0;
+	}
+
+	return updateModemConfig(REG::MODEM_CONFIG3, static_cast<uint8_t>(mode), params, sendSPI);
+}
+
 template<ChipModel Model>
 void LoRaModem<Model>::setFrequency(uint32_t freq)
 {

@@ -32,22 +32,18 @@ class LoRaModem
 	}
 
 	void startReceiver();
-
+	// Modem Config1 Registers Functions
 	uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
 	{
-		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
-		uint8_t bw_value = 0;
-		uint8_t mask = 0;
+		Register::ConfigParams params;
 
 		if constexpr(is_sx1272_plus_v<Model>)
 		{
-			bw_value = static_cast<uint8_t>(bw) << 6;
-			mask = 0b11000000;
+			params = {6, 0b11000000}; // Shift = 6, Mask = 0b11000000
 		}
 		else if constexpr(is_sx1276_plus_v<Model>)
 		{
-			bw_value = static_cast<uint8_t>(bw) << 4;
-			mask = 0b11110000;
+			params = {4, 0b11110000}; // Shift = 4, Mask = 0b11110000
 		}
 		else
 		{
@@ -55,16 +51,13 @@ class LoRaModem
 			return 0;
 		}
 
-		if(sendSPI)
-		{
-			spiBus_.writeRegister(reg->address, bw_value);
-		}
-
-		reg->updateBits(mask, bw_value);
-		return bw_value;
+		return updateModemConfig(REG::MODEM_CONFIG1, static_cast<uint8_t>(bw), params, sendSPI);
 	}
+	uint8_t setCodingRate(CodingRate rate, bool sendSPI);
+	uint8_t setImplicitHeader(HeaderMode mode, bool sendSPI);
+	uint8_t setCRC(CRCMode mode, bool sendSPI);
+	uint8_t setLowDataOptimization(LowDataRateOptimize mode, bool sendSPI);
 
-	void setBitRate(uint8_t sf, uint8_t crc);
 	void setFrequency(uint32_t freq);
 	void setPow(uint8_t pow);
 
@@ -162,6 +155,20 @@ class LoRaModem
 	{
 		auto it = LoRaFrequencies.find(band);
 		return (it != LoRaFrequencies.end()) ? &(it->second) : nullptr;
+	}
+	uint8_t updateModemConfig(REG reg, uint8_t value, const Register::ConfigParams& params,
+							  bool sendSPI)
+	{
+		auto reg_ptr = registers_.getRegister(reg);
+		uint8_t final_value = value << params.shift;
+
+		if(sendSPI)
+		{
+			spiBus_.writeRegister(reg_ptr->address, final_value);
+		}
+
+		reg_ptr->updateBits(params.mask, final_value);
+		return final_value;
 	}
 };
 

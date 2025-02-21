@@ -74,6 +74,11 @@ struct Register
 	const REG reg;
 	const REG_MODE mode;
 	const uint8_t address;
+	struct ConfigParams
+	{
+		uint8_t shift;
+		uint8_t mask;
+	};
 	constexpr Register() :
 		model(ChipModel::SX1276), reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value(0)
 	{
@@ -460,7 +465,7 @@ class LoRaRegisters
 	}
 
   private:
-	etl::array<Register, 45> registers;
+	etl::array<Register, REG_COUNT> registers;
 };
 
 } // namespace LoRa
