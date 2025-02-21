@@ -23,5 +23,7 @@ static constexpr uint64_t FXOC = 32000000;
 static constexpr uint16_t BUFFER_BYTES = 2;
 static constexpr bool Monitor = true;
 
+static constexpr uint16_t REG_COUNT = 45;
+
 } // namespace LoRa
 #endif

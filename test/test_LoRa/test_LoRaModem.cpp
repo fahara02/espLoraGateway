@@ -14,7 +14,7 @@ void MockLoRaModem::testOptMode()
 	LOG::TEST(TAG, "Testing optmode function");
 	// Test 1: Using LongRangeMode only.
 	{
-		Register reg(REG::OPMODE, REG_MODE::READ_WRITE, 0x01, 0);
+		Register reg(ChipModel::SX1276, REG::OPMODE);
 		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).
 		uint8_t result = reg.setOptMode<REG::OPMODE>(LongRangeMode::LORA);
 		TEST_ASSERT_EQUAL_UINT8(0x80, result);
@@ -33,7 +33,7 @@ void MockLoRaModem::testOptMode()
 	}
 	// Test 2: Using LongRangeMode only.
 	{
-		Register reg(REG::OPMODE, REG_MODE::READ_WRITE, 0x01, 0);
+		Register reg(ChipModel::SX1276, REG::OPMODE);
 
 		// Calling with RX; assuming RX is defined as 5.
 		uint8_t result = reg.setOptMode<REG::OPMODE, LoRa::ChipModel::SX1276>(
@@ -43,7 +43,7 @@ void MockLoRaModem::testOptMode()
 	}
 	// Test 4: Using the ConfigureOptMode structure.
 	{
-		Register reg(REG::OPMODE, REG_MODE::READ_WRITE, 0x01, 0);
+		Register reg(ChipModel::SX1276, REG::OPMODE);
 		ConfigureOptMode<Model::SX1276> config = {
 			LongRangeMode::LORA, // LORA → (1 << 7) = 128
 			AccessSharedReg::ACCESS_FSK, // ACCESS_FSK → (1 << 6) = 64
@@ -60,7 +60,7 @@ void MockLoRaModem::testBandwidth()
 	LOG::TEST(TAG, "Testing BandWidth function");
 	MockLoRaModem modem;
 
-	// Test for SX1272 (BW_72)
+	// Test for SX1276 (BW_76)
 	using BandwidthType = typename LoRa::LoRaModem<LoRa::ChipModel::SX1276>::Bandwidth;
 	BandwidthType bw = BandwidthType::BW_250_KHZ;
 

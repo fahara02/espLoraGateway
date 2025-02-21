@@ -20,7 +20,7 @@ class LoRaModem
 	using tMode = TransceiverModes;
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
 
-	LoRaModem<Model>(BoardModel model, uint8_t address, LoRaBands band, const uint8_t bandIndex) :
+	LoRaModem(BoardModel model, uint8_t address, LoRaBands band, const uint8_t bandIndex) :
 		model_(model), address_(address), spiBus_(Core::SPIBus::getInstance(address_)),
 		frequencytable_(getLoRaFrequencies(band)),
 		frequencyPlan_((frequencytable_ && bandIndex < LORA_MAX_CHANNEL) ?
@@ -84,7 +84,7 @@ class LoRaModem
 	const LoRaFreqTable* frequencytable_;
 	const FrequencyPlan frequencyPlan_;
 	LoRaPins pins_;
-	LoRaRegisters registers_;
+	LoRaRegisters<Model> registers_;
 
 	volatile ReceiverState rxState_ = ReceiverState::S_INIT;
 	volatile uint8_t event_ = 0;

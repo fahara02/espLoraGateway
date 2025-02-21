@@ -70,17 +70,237 @@ enum class REG
 
 struct Register
 {
+	const ChipModel model;
 	const REG reg;
 	const REG_MODE mode;
 	const uint8_t address;
-	constexpr Register() : reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value(0)
+	constexpr Register() :
+		model(ChipModel::SX1276), reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value(0)
 	{
 	}
-	constexpr Register(REG r, REG_MODE m, uint8_t addr, uint8_t v) :
-		reg(r), mode(m), address(addr), value(v)
+	constexpr Register(ChipModel m, REG r) :
+		model(m), reg(r), mode(getRegMode(r)), address(getRegAddress(r)),
+		value(getDefaultValue(r, m))
 	{
 	}
-
+	constexpr uint8_t getRegAddress(REG r)
+	{
+		switch(r)
+		{
+			case REG::FIFO:
+				return 0x00;
+			case REG::OPMODE:
+				return 0x01;
+			case REG::FRF_MSB:
+				return 0x06;
+			case REG::FRF_MID:
+				return 0x07;
+			case REG::FRF_LSB:
+				return 0x08;
+			case REG::PAC:
+				return 0x09;
+			case REG::PARAMP:
+				return 0x0A;
+			case REG::OCP:
+				return 0x0B;
+			case REG::LNA:
+				return 0x0C;
+			case REG::FIFO_ADDR_PTR:
+				return 0x0D;
+			case REG::FIFO_TX_BASE_AD:
+				return 0x0E;
+			case REG::FIFO_RX_BASE_AD:
+				return 0x0F;
+			case REG::FIFO_RX_CURRENT_ADDR:
+				return 0x10;
+			case REG::IRQ_FLAGS_MASK:
+				return 0x11;
+			case REG::IRQ_FLAGS:
+				return 0x12;
+			case REG::RX_BYTES_NB:
+				return 0x13;
+			case REG::PKT_SNR_VALUE:
+				return 0x19;
+			case REG::PKT_RSSI:
+				return 0x1A;
+			case REG::HOP_CHANNEL:
+				return 0x1C;
+			case REG::MODEM_CONFIG1:
+				return 0x1D;
+			case REG::MODEM_CONFIG2:
+				return 0x1E;
+			case REG::SYMB_TIMEOUT_LSB:
+				return 0x1F;
+			case REG::PREAMBLE_MSB:
+				return 0x20;
+			case REG::PREAMBLE_LSB:
+				return 0x21;
+			case REG::PAYLOAD_LENGTH:
+				return 0x22;
+			case REG::MAX_PAYLOAD_LENGTH:
+				return 0x23;
+			case REG::HOP_PERIOD:
+				return 0x24;
+			case REG::FIFO_RX_BYTE_ADDR_PTR:
+				return 0x25;
+			case REG::MODEM_CONFIG3:
+				return 0x26;
+			case REG::PPM_CORRECTION:
+				return 0x27;
+			case REG::FREQ_ERROR_MSB:
+				return 0x28;
+			case REG::FREQ_ERROR_MID:
+				return 0x29;
+			case REG::FREQ_ERROR_LSB:
+				return 0x2A;
+			case REG::RSSI_WIDEBAND:
+				return 0x2C;
+			case REG::DETECT_OPTIMIZE:
+				return 0x31;
+			case REG::INVERTIQ:
+				return 0x33;
+			case REG::DET_TRESH:
+				return 0x37;
+			case REG::SYNC_WORD:
+				return 0x39;
+			case REG::INVERTIQ2:
+				return 0x3B;
+			case REG::TEMP:
+				return 0x3C;
+			case REG::DIO_MAPPING_1:
+				return 0x40;
+			case REG::DIO_MAPPING_2:
+				return 0x41;
+			case REG::VERSION:
+				return 0x42;
+			case REG::PADAC:
+				return 0x4D;
+		}
+		return 0xFF; // Invalid register (shouldn't happen)
+	}
+	constexpr uint8_t getDefaultValue(REG r, ChipModel m)
+	{
+		switch(r)
+		{
+			case REG::FRF_MSB:
+				return 0x6C;
+			case REG::FRF_MID:
+				return 0x80;
+			case REG::FRF_LSB:
+				return 0x00;
+			default:
+				return 0x00;
+		}
+	}
+	constexpr REG_MODE getRegMode(REG r)
+	{
+		switch(r)
+		{
+			case REG::FIFO:
+				return REG_MODE::READ_WRITE;
+			case REG::OPMODE:
+				return REG_MODE::READ_WRITE;
+			case REG::FRF_MSB:
+				return REG_MODE::READ_WRITE;
+			case REG::FRF_MID:
+				return REG_MODE::READ_WRITE;
+			case REG::FRF_LSB:
+				return REG_MODE::READ_WRITE;
+			case REG::PAC:
+				return REG_MODE::READ_WRITE;
+			case REG::PARAMP:
+				return REG_MODE::READ_WRITE;
+			case REG::OCP:
+				return REG_MODE::READ_WRITE;
+			case REG::LNA:
+				return REG_MODE::READ_WRITE;
+			case REG::FIFO_ADDR_PTR:
+				return REG_MODE::READ_WRITE;
+			case REG::FIFO_TX_BASE_AD:
+				return REG_MODE::READ_WRITE;
+			case REG::FIFO_RX_BASE_AD:
+				return REG_MODE::READ_WRITE;
+			case REG::FIFO_RX_CURRENT_ADDR:
+				return REG_MODE::READ_ONLY;
+			case REG::IRQ_FLAGS_MASK:
+				return REG_MODE::READ_WRITE;
+			case REG::IRQ_FLAGS:
+				return REG_MODE::SET_TO_CLEAR;
+			case REG::RX_BYTES_NB:
+				return REG_MODE::READ_ONLY;
+			case REG::PKT_SNR_VALUE:
+				return REG_MODE::READ_ONLY;
+			case REG::PKT_RSSI:
+				return REG_MODE::READ_ONLY;
+			case REG::HOP_CHANNEL:
+				return REG_MODE::READ_ONLY;
+			case REG::MODEM_CONFIG1:
+				return REG_MODE::READ_WRITE;
+			case REG::MODEM_CONFIG2:
+				return REG_MODE::READ_WRITE;
+			case REG::SYMB_TIMEOUT_LSB:
+				return REG_MODE::READ_WRITE;
+			case REG::PREAMBLE_MSB:
+				return REG_MODE::READ_WRITE;
+			case REG::PREAMBLE_LSB:
+				return REG_MODE::READ_WRITE;
+			case REG::PAYLOAD_LENGTH:
+				return REG_MODE::READ_WRITE;
+			case REG::MAX_PAYLOAD_LENGTH:
+				return REG_MODE::READ_WRITE;
+			case REG::HOP_PERIOD:
+				return REG_MODE::READ_WRITE;
+			case REG::FIFO_RX_BYTE_ADDR_PTR:
+				return REG_MODE::READ_WRITE;
+			case REG::MODEM_CONFIG3:
+				return REG_MODE::READ_WRITE;
+			case REG::PPM_CORRECTION:
+				return REG_MODE::READ_WRITE;
+			case REG::FREQ_ERROR_MSB:
+				return REG_MODE::READ_ONLY;
+			case REG::FREQ_ERROR_MID:
+				return REG_MODE::READ_ONLY;
+			case REG::FREQ_ERROR_LSB:
+				return REG_MODE::READ_ONLY;
+			case REG::RSSI_WIDEBAND:
+				return REG_MODE::READ_ONLY;
+			case REG::DETECT_OPTIMIZE:
+				return REG_MODE::READ_WRITE;
+			case REG::INVERTIQ:
+				return REG_MODE::READ_WRITE;
+			case REG::DET_TRESH:
+				return REG_MODE::READ_WRITE;
+			case REG::SYNC_WORD:
+				return REG_MODE::READ_WRITE;
+			case REG::INVERTIQ2:
+				return REG_MODE::READ_WRITE;
+			case REG::TEMP:
+				return REG_MODE::READ_ONLY;
+			case REG::DIO_MAPPING_1:
+				return REG_MODE::READ_WRITE;
+			case REG::DIO_MAPPING_2:
+				return REG_MODE::READ_WRITE;
+			case REG::VERSION:
+				return REG_MODE::READ_ONLY;
+			case REG::PADAC:
+				return REG_MODE::READ_WRITE;
+		}
+		return REG_MODE::READ_WRITE; // Default case
+	}
+	// Set operating mode for OPMODE register
+	// template<REG T, typename ModeType>
+	// typename etl::enable_if<T == REG::OPMODE, uint8_t>::type setOptMode(const ModeType mode)
+	// {
+	// 	if constexpr(std::is_same_v<ModeType, LongRangeMode>)
+	// 	{
+	// 		value = (value & ~(1 << 7)) | ((static_cast<uint8_t>(mode) & 0b1) << 7);
+	// 	}
+	// 	else if constexpr(std::is_same_v<ModeType, TransceiverModes>)
+	// 	{
+	// 		value = (value & ~0b111) | (static_cast<uint8_t>(mode) & 0b111);
+	// 	}
+	// 	return value;
+	// }
 	template<REG T>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type setOptMode(const LongRangeMode mode)
 	{
@@ -152,7 +372,7 @@ struct Register
 
 	void reset()
 	{
-		value = 0;
+		value = getDefaultValue(reg, model);
 	}
 	uint8_t getValue() const
 	{
@@ -173,55 +393,57 @@ struct Register
   private:
 	uint8_t value;
 };
-
+template<ChipModel Model>
 class LoRaRegisters
 {
   public:
 	constexpr LoRaRegisters() :
-		registers{Register(REG::FIFO, REG_MODE::READ_WRITE, 0x00, 0x00),
-				  Register(REG::OPMODE, REG_MODE::READ_WRITE, 0x01, 0x00),
-				  Register(REG::FRF_MSB, REG_MODE::READ_WRITE, 0x06, 0x6C),
-				  Register(REG::FRF_MID, REG_MODE::READ_WRITE, 0x07, 0x80),
-				  Register(REG::FRF_LSB, REG_MODE::READ_WRITE, 0x08, 0x00),
-				  Register(REG::PAC, REG_MODE::READ_WRITE, 0x09, 0x00),
-				  Register(REG::PARAMP, REG_MODE::READ_WRITE, 0x0A, 0x00),
-				  Register(REG::OCP, REG_MODE::READ_WRITE, 0x0B, 0x00),
-				  Register(REG::LNA, REG_MODE::READ_WRITE, 0x0C, 0x00),
-				  Register(REG::FIFO_ADDR_PTR, REG_MODE::READ_WRITE, 0x0D, 0x00),
-				  Register(REG::FIFO_TX_BASE_AD, REG_MODE::READ_WRITE, 0x0E, 0x00),
-				  Register(REG::FIFO_RX_BASE_AD, REG_MODE::READ_WRITE, 0x0F, 0x00),
-				  Register(REG::FIFO_RX_CURRENT_ADDR, REG_MODE::READ_ONLY, 0x10, 0x00),
-				  Register(REG::IRQ_FLAGS_MASK, REG_MODE::READ_WRITE, 0x11, 0x00),
-				  Register(REG::IRQ_FLAGS, REG_MODE::SET_TO_CLEAR, 0x12, 0x00),
-				  Register(REG::RX_BYTES_NB, REG_MODE::READ_ONLY, 0x13, 0x00),
-				  Register(REG::PKT_SNR_VALUE, REG_MODE::READ_ONLY, 0x19, 0x00),
-				  Register(REG::PKT_RSSI, REG_MODE::READ_ONLY, 0x1A, 0x00),
-				  Register(REG::HOP_CHANNEL, REG_MODE::READ_ONLY, 0x1C, 0x00),
-				  Register(REG::MODEM_CONFIG1, REG_MODE::READ_WRITE, 0x1D, 0x00),
-				  Register(REG::MODEM_CONFIG2, REG_MODE::READ_WRITE, 0x1E, 0x00),
-				  Register(REG::SYMB_TIMEOUT_LSB, REG_MODE::READ_WRITE, 0x1F, 0x00),
-				  Register(REG::PREAMBLE_MSB, REG_MODE::READ_WRITE, 0x20, 0x00),
-				  Register(REG::PREAMBLE_LSB, REG_MODE::READ_WRITE, 0x21, 0x00),
-				  Register(REG::PAYLOAD_LENGTH, REG_MODE::READ_WRITE, 0x22, 0x00),
-				  Register(REG::MAX_PAYLOAD_LENGTH, REG_MODE::READ_WRITE, 0x23, 0x00),
-				  Register(REG::HOP_PERIOD, REG_MODE::READ_WRITE, 0x24, 0x00),
-				  Register(REG::FIFO_RX_BYTE_ADDR_PTR, REG_MODE::READ_WRITE, 0x25, 0x00),
-				  Register(REG::MODEM_CONFIG3, REG_MODE::READ_WRITE, 0x26, 0x00),
-				  Register(REG::PPM_CORRECTION, REG_MODE::READ_WRITE, 0x27, 0x00),
-				  Register(REG::FREQ_ERROR_MSB, REG_MODE::READ_ONLY, 0x28, 0x00),
-				  Register(REG::FREQ_ERROR_MID, REG_MODE::READ_ONLY, 0x29, 0x00),
-				  Register(REG::FREQ_ERROR_LSB, REG_MODE::READ_ONLY, 0x2A, 0x00),
-				  Register(REG::RSSI_WIDEBAND, REG_MODE::READ_ONLY, 0x2C, 0x00),
-				  Register(REG::DETECT_OPTIMIZE, REG_MODE::READ_WRITE, 0x31, 0x00),
-				  Register(REG::INVERTIQ, REG_MODE::READ_WRITE, 0x33, 0x00),
-				  Register(REG::DET_TRESH, REG_MODE::READ_WRITE, 0x37, 0x00),
-				  Register(REG::SYNC_WORD, REG_MODE::READ_WRITE, 0x39, 0x00),
-				  Register(REG::INVERTIQ2, REG_MODE::READ_WRITE, 0x3B, 0x00),
-				  Register(REG::TEMP, REG_MODE::READ_ONLY, 0x3C, 0x00),
-				  Register(REG::DIO_MAPPING_1, REG_MODE::READ_WRITE, 0x40, 0x00),
-				  Register(REG::DIO_MAPPING_2, REG_MODE::READ_WRITE, 0x41, 0x00),
-				  Register(REG::VERSION, REG_MODE::READ_ONLY, 0x42, 0x00),
-				  Register(REG::PADAC, REG_MODE::READ_WRITE, 0x4D, 0x00)}
+		registers{
+			Register(Model, REG::FIFO),
+			Register(Model, REG::OPMODE),
+			Register(Model, REG::FRF_MSB),
+			Register(Model, REG::FRF_MID),
+			Register(Model, REG::FRF_LSB),
+			Register(Model, REG::PAC),
+			Register(Model, REG::PARAMP),
+			Register(Model, REG::OCP),
+			Register(Model, REG::LNA),
+			Register(Model, REG::FIFO_ADDR_PTR),
+			Register(Model, REG::FIFO_TX_BASE_AD),
+			Register(Model, REG::FIFO_RX_BASE_AD),
+			Register(Model, REG::FIFO_RX_CURRENT_ADDR),
+			Register(Model, REG::IRQ_FLAGS_MASK),
+			Register(Model, REG::IRQ_FLAGS),
+			Register(Model, REG::RX_BYTES_NB),
+			Register(Model, REG::PKT_SNR_VALUE),
+			Register(Model, REG::PKT_RSSI),
+			Register(Model, REG::HOP_CHANNEL),
+			Register(Model, REG::MODEM_CONFIG1),
+			Register(Model, REG::MODEM_CONFIG2),
+			Register(Model, REG::SYMB_TIMEOUT_LSB),
+			Register(Model, REG::PREAMBLE_MSB),
+			Register(Model, REG::PREAMBLE_LSB),
+			Register(Model, REG::PAYLOAD_LENGTH),
+			Register(Model, REG::MAX_PAYLOAD_LENGTH),
+			Register(Model, REG::HOP_PERIOD),
+			Register(Model, REG::FIFO_RX_BYTE_ADDR_PTR),
+			Register(Model, REG::MODEM_CONFIG3),
+			Register(Model, REG::PPM_CORRECTION),
+			Register(Model, REG::FREQ_ERROR_MSB),
+			Register(Model, REG::FREQ_ERROR_MID),
+			Register(Model, REG::FREQ_ERROR_LSB),
+			Register(Model, REG::RSSI_WIDEBAND),
+			Register(Model, REG::DETECT_OPTIMIZE),
+			Register(Model, REG::INVERTIQ),
+			Register(Model, REG::DET_TRESH),
+			Register(Model, REG::SYNC_WORD),
+			Register(Model, REG::INVERTIQ2),
+			Register(Model, REG::TEMP),
+			Register(Model, REG::DIO_MAPPING_1),
+			Register(Model, REG::DIO_MAPPING_2),
+			Register(Model, REG::VERSION),
+			Register(Model, REG::PADAC),
+		}
 	{
 	}
 
