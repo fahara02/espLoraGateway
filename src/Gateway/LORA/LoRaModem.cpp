@@ -47,41 +47,26 @@ void LoRaModem<Model>::setFrequency(uint32_t freq)
 template<ChipModel Model>
 uint8_t LoRaModem<Model>::setCodingRate(CodingRate rate, bool sendSPI)
 {
-	return updateModemConfig1(
-		[&](auto reg) {
-			return reg->template setCodingRate<REG::MODEM_CONFIG1, Model>(rate);
-		},
-		sendSPI);
+	return updateModemConfig1(static_cast<uint8_t>(rate), ModemConfig1Field::CodingRate, sendSPI);
 }
 
 template<ChipModel Model>
 uint8_t LoRaModem<Model>::setImplicitHeader(HeaderMode mode, bool sendSPI)
 {
-	return updateModemConfig1(
-		[&](auto reg) {
-			return reg->template setImplicitHeader<REG::MODEM_CONFIG1, Model>(mode);
-		},
-		sendSPI);
+	return updateModemConfig1(static_cast<uint8_t>(mode), ModemConfig1Field::HeaderMode, sendSPI);
 }
 
 template<ChipModel Model>
 uint8_t LoRaModem<Model>::setCRC(CRCMode mode, bool sendSPI)
 {
-	return updateModemConfig1(
-		[&](auto reg) {
-			return reg->template setCRC<REG::MODEM_CONFIG1, Model>(mode);
-		},
-		sendSPI);
+	return updateModemConfig1(static_cast<uint8_t>(mode), ModemConfig1Field::CRC, sendSPI);
 }
 
 template<ChipModel Model>
 uint8_t LoRaModem<Model>::setLowDataOptimization(LowDataRateOptimize mode, bool sendSPI)
 {
-	return updateModemConfig1(
-		[&](auto reg) {
-			return reg->template setLowDataOptimization<REG::MODEM_CONFIG1, Model>(mode);
-		},
-		sendSPI);
+	return updateModemConfig1(static_cast<uint8_t>(mode), ModemConfig1Field::LowDataOptimization,
+							  sendSPI);
 }
 
 template<ChipModel Model>

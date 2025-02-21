@@ -185,42 +185,6 @@ struct Register
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		setBandWidth(Bandwidth<Model>& bw)
-	{
-		return updateModemConfig<REG::MODEM_CONFIG1, Model>(static_cast<uint8_t>(bw),
-															ModemConfig1Field::Bandwidth);
-	}
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCodingRate(CodingRate rate)
-	{
-		return updateModemConfig<REG::MODEM_CONFIG1, Model>(static_cast<uint8_t>(rate),
-															ModemConfig1Field::CodingRate);
-	}
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		setImplicitHeader(HeaderMode mode)
-	{
-		return updateModemConfig<REG::MODEM_CONFIG1, Model>(static_cast<uint8_t>(mode),
-															ModemConfig1Field::HeaderMode);
-	}
-
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCRC(CRCMode mode)
-	{
-		return updateModemConfig<REG::MODEM_CONFIG1, Model>(static_cast<uint8_t>(mode),
-															ModemConfig1Field::CRC);
-	}
-
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		setLowDataOptimization(LowDataRateOptimize mode)
-	{
-		return updateModemConfig<REG::MODEM_CONFIG1, Model>(static_cast<uint8_t>(mode),
-															ModemConfig1Field::LowDataOptimization);
-	}
-
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
 		configureModem(const ModemConfig1<Model>& config)
 	{
 		// Clear only the bits being modified while preserving others
@@ -266,9 +230,6 @@ struct Register
 	{
 		value = (value & ~mask) | (newValue & mask);
 	}
-
-  private:
-	uint8_t value;
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
 		updateModemConfig(uint8_t value, const ModemConfig1Field field)
@@ -319,6 +280,9 @@ struct Register
 		updateBits(params.mask, final_value);
 		return final_value;
 	}
+
+  private:
+	uint8_t value;
 
 	static constexpr etl::array<RegInfo, REG_COUNT> regTable{
 		{{REG::FIFO, 0x00, REG_MODE::READ_WRITE, 0x00},

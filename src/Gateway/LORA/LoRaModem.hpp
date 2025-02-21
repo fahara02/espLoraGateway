@@ -35,11 +35,7 @@ class LoRaModem
 
 	uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
 	{
-		return updateModemConfig1(
-			[&](auto reg) {
-				return reg->template setBandWidth<REG::MODEM_CONFIG1, Model>(bw);
-			},
-			sendSPI);
+		return updateModemConfig1(static_cast<uint8_t>(bw), ModemConfig1Field::Bandwidth, sendSPI);
 	}
 
 	uint8_t setCodingRate(CodingRate rate, bool sendSPI);
@@ -149,16 +145,19 @@ class LoRaModem
 		auto it = LoRaFrequencies.find(band);
 		return (it != LoRaFrequencies.end()) ? &(it->second) : nullptr;
 	}
-	template<typename Func>
-	uint8_t updateModemConfig1(Func&& setter, bool sendSPI)
+
+	uint8_t updateModemConfig1(uint8_t value, ModemConfig1Field field, bool sendSPI)
 	{
 		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
-		uint8_t value = setter(reg); // Perform the specific register operation
+		reg->template updateModemConfig<REG::MODEM_CONFIG1, Model>(value, field);
+
+		uint8_t updatedValue = reg->getValue(); // Retrieve the modified register value
+
 		if(sendSPI)
 		{
-			spiBus_.writeRegister(reg->address, value);
+			spiBus_.writeRegister(reg->address, updatedValue);
 		}
-		return value;
+		return updatedValue; // Return the actual modified register value
 	}
 };
 
