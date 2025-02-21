@@ -30,30 +30,66 @@ static constexpr bool is_sx162_plus_v = Model == ChipModel::SX1261 || Model == C
 template<ChipModel Model>
 static constexpr bool is_rfm_plus_v = Model == ChipModel::RFM95;
 
-struct ChipSeries
+constexpr bool isSx1276Plus(ChipModel m)
 {
-	bool isRFMSeries;
-	bool isSm62Series;
-	bool isSm72Series;
-	bool isSm76Series;
+	return m == ChipModel::SX1276 || m == ChipModel::SX1277 || m == ChipModel::SX1278 ||
+		   m == ChipModel::SX1279;
+}
 
-	constexpr bool operator==(const ChipSeries& other) const
-	{
-		return isRFMSeries == other.isRFMSeries && isSm62Series == other.isSm62Series &&
-			   isSm72Series == other.isSm72Series && isSm76Series == other.isSm76Series;
-	}
+constexpr bool isSx1272Plus(ChipModel m)
+{
+	return m == ChipModel::SX1272 || m == ChipModel::SX1273;
+}
+
+constexpr bool isSx126Plus(ChipModel m)
+{
+	return m == ChipModel::SX1261 || m == ChipModel::SX1262;
+}
+
+constexpr bool isRfmPlus(ChipModel m)
+{
+	return m == ChipModel::RFM95;
+}
+
+enum class ChipSeries : uint8_t
+{
+	None = 0,
+	RFM = 1 << 0,
+	SM62 = 1 << 1,
+	SM72 = 1 << 2,
+	SM76 = 1 << 3,
 };
 
-constexpr ChipSeries RFM_Series = {true, false, false, false};
-constexpr ChipSeries Sm62_Series = {false, true, false, false};
-constexpr ChipSeries Sm72_Series = {false, false, true, false};
-constexpr ChipSeries Sm76_Series = {false, false, false, true};
-
-template<ChipModel Model>
-constexpr ChipSeries GetChipType()
+constexpr ChipSeries operator|(ChipSeries a, ChipSeries b)
 {
-	return {is_rfm_plus_v<Model>, is_sx162_plus_v<Model>, is_sx1272_plus_v<Model>,
-			is_sx1276_plus_v<Model>};
+	return static_cast<ChipSeries>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+}
+
+constexpr bool hasFlag(ChipSeries series, ChipSeries flag)
+{
+	return (static_cast<uint8_t>(series) & static_cast<uint8_t>(flag)) != 0;
+}
+
+constexpr ChipSeries getChipSeries(ChipModel model)
+{
+	switch(model)
+	{
+		case ChipModel::RFM95:
+			return ChipSeries::RFM;
+		case ChipModel::SX1272:
+		case ChipModel::SX1273:
+			return ChipSeries::SM72;
+		case ChipModel::SX1276:
+		case ChipModel::SX1277:
+		case ChipModel::SX1278:
+		case ChipModel::SX1279:
+			return ChipSeries::SM76;
+		case ChipModel::SX1261:
+		case ChipModel::SX1262:
+			return ChipSeries::SM62;
+		default:
+			return ChipSeries::None;
+	}
 }
 
 enum class LongRangeMode : uint8_t
@@ -85,23 +121,17 @@ enum class TransceiverModes : uint8_t
 	CAD = 0x7 // Channel Activity Detection
 };
 
-template<ChipModel Model>
-struct ConfigureOptMode;
-
-template<>
-struct ConfigureOptMode<ChipModel::SX1272>
+struct NoLowFreqMode
 {
-	LongRangeMode long_range;
-	AccessSharedReg shared_reg;
-	TransceiverModes transceiver;
 };
 
-template<>
-struct ConfigureOptMode<ChipModel::SX1276>
+template<ChipModel Model>
+struct ConfigureOptMode
 {
 	LongRangeMode long_range;
 	AccessSharedReg shared_reg;
-	LowFreqMode low_freq;
+	// Select LowFreqMode for SX1276 (or similar models), or NoLowFreqMode otherwise.
+	typename etl::conditional<is_sx1276_plus_v<Model>, LowFreqMode, NoLowFreqMode>::type low_freq;
 	TransceiverModes transceiver;
 };
 
@@ -153,25 +183,15 @@ enum class SignalBandwidth_76 : uint8_t
 	BW_500_KHZ = 0b1001, // 500 kHz
 };
 
-template<ChipModel Model, typename Enable = void>
+template<ChipModel Model>
 struct SignalBandWidth
 {
-	using Type = void; // Default case, no shaping
+	using Type = typename etl::conditional<
+		is_sx1272_plus_v<Model>, SignalBandwidth_72,
+		typename etl::conditional<is_sx1276_plus_v<Model>, SignalBandwidth_76, void>::type>::type;
 };
 
-template<ChipModel Model>
-struct SignalBandWidth<Model, typename etl::enable_if<(is_sx1272_plus_v<Model>)>::type>
-{
-	using Type = SignalBandwidth_72;
-};
-
-template<ChipModel Model>
-struct SignalBandWidth<Model, typename etl::enable_if<(is_sx1276_plus_v<Model>)>::type>
-{
-	using Type = SignalBandwidth_76;
-};
-
-enum class ModemConfig1Field : uint8_t
+enum class Field_ModemConfig1 : uint8_t
 {
 	Bandwidth,
 	CodingRate,
@@ -180,30 +200,19 @@ enum class ModemConfig1Field : uint8_t
 	LowDataOptimization
 };
 
-template<ChipModel Model, typename Enable = void>
-struct ModemConfig1;
-
 template<ChipModel Model>
-struct ModemConfig1<Model, typename std::enable_if<is_sx1272_plus_v<Model>>::type>
+struct Setting_ModemConfig1
 {
 	using BandwidthType = typename SignalBandWidth<Model>::Type;
-
 	BandwidthType bw;
 	CodingRate coding_rate;
 	HeaderMode header_mode;
-	CRCMode mode; // Enabled only for SX1272/SX1273
-	LowDataRateOptimize ldro; // Enabled only for SX1272/SX1273
+
+	// Only available for SX1272/SX1273:
+	etl::conditional_t<isSx1272Plus(Model), CRCMode, void> mode;
+	etl::conditional_t<isSx1272Plus(Model), LowDataRateOptimize, void> ldro;
 };
 
-template<ChipModel Model>
-struct ModemConfig1<Model, typename std::enable_if<is_sx1276_plus_v<Model>>::type>
-{
-	using BandwidthType = typename SignalBandWidth<Model>::Type;
-
-	BandwidthType bw;
-	CodingRate coding_rate;
-	HeaderMode header_mode;
-};
 struct ConfigParams
 {
 	uint8_t shift;
@@ -214,11 +223,11 @@ template<typename FieldType>
 struct FieldConfig
 {
 	FieldType field; // Field identifier (e.g. ModemConfig1Field, or another enum)
-	ChipSeries chipType;
+	ChipSeries chip_series;
 	ConfigParams params; // The bit shift and mask for this field
 };
 
-using ModemConfig1FieldConfig = FieldConfig<ModemConfig1Field>;
+using ModemConfig1FieldConfig = FieldConfig<Field_ModemConfig1>;
 
 } // namespace LoRa
 #endif

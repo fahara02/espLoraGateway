@@ -80,18 +80,18 @@ struct RegInfo
 
 constexpr ModemConfig1FieldConfig modemConfig1FieldConfigs[] = {
 	// Bandwidth:
-	{ModemConfig1Field::Bandwidth, Sm72_Series, {6, 0b11000000}},
-	{ModemConfig1Field::Bandwidth, Sm76_Series, {4, 0b11110000}},
+	{Field_ModemConfig1::Bandwidth, ChipSeries::SM72, {6, 0b11000000}},
+	{Field_ModemConfig1::Bandwidth, ChipSeries::SM76, {4, 0b11110000}},
 	// Coding Rate:
-	{ModemConfig1Field::CodingRate, Sm72_Series, {3, 0b00111000}},
-	{ModemConfig1Field::CodingRate, Sm76_Series, {1, 0b00001110}},
+	{Field_ModemConfig1::CodingRate, ChipSeries::SM72, {3, 0b00111000}},
+	{Field_ModemConfig1::CodingRate, ChipSeries::SM76, {1, 0b00001110}},
 	// HeaderMode
-	{ModemConfig1Field::HeaderMode, Sm72_Series, {2, 0b00000100}},
-	{ModemConfig1Field::HeaderMode, Sm76_Series, {0, 0b00000001}},
+	{Field_ModemConfig1::HeaderMode, ChipSeries::SM72, {2, 0b00000100}},
+	{Field_ModemConfig1::HeaderMode, ChipSeries::SM76, {0, 0b00000001}},
 	// CRC (only defined for Sm72 series):
-	{ModemConfig1Field::CRC, Sm72_Series, {1, 0b00000010}},
+	{Field_ModemConfig1::CRC, ChipSeries::SM72, {1, 0b00000010}},
 	// Low Data Optimization (only defined for Sm72 series):
-	{ModemConfig1Field::LowDataOptimization, Sm72_Series, {0, 0b00000001}}};
+	{Field_ModemConfig1::LowDataOptimization, ChipSeries::SM72, {0, 0b00000001}}};
 
 struct Register
 {
@@ -128,20 +128,6 @@ struct Register
 		return info ? info->mode : REG_MODE::ANY;
 	}
 
-	// Set operating mode for OPMODE register
-	// template<REG T, typename ModeType>
-	// typename etl::enable_if<T == REG::OPMODE, uint8_t>::type setOptMode(const ModeType mode)
-	// {
-	// 	if constexpr(std::is_same_v<ModeType, LongRangeMode>)
-	// 	{
-	// 		value = (value & ~(1 << 7)) | ((static_cast<uint8_t>(mode) & 0b1) << 7);
-	// 	}
-	// 	else if constexpr(std::is_same_v<ModeType, TransceiverModes>)
-	// 	{
-	// 		value = (value & ~0b111) | (static_cast<uint8_t>(mode) & 0b111);
-	// 	}
-	// 	return value;
-	// }
 	template<REG T>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type setOptMode(const LongRangeMode mode)
 	{
@@ -185,7 +171,7 @@ struct Register
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		configureModem(const ModemConfig1<Model>& config)
+		configureModem(const Setting_ModemConfig1<Model>& config)
 	{
 		// Clear only the bits being modified while preserving others
 		if constexpr(is_sx1276_plus_v<Model>)
@@ -231,50 +217,18 @@ struct Register
 		value = (value & ~mask) | (newValue & mask);
 	}
 	template<REG T, ChipModel Model>
-	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		updateModemConfig(uint8_t value, const ModemConfig1Field field)
+	typename std::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
+		updateModemConfig(uint8_t value, const Field_ModemConfig1 field)
 	{
 		ConfigParams params;
-		switch(field)
+		if constexpr(isSx1272Plus(Model))
 		{
-			case ModemConfig1Field::Bandwidth:
-				params = is_sx1272_plus_v<Model> ?
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::Bandwidth,
-												  Sm72_Series) :
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::Bandwidth,
-												  Sm76_Series);
-				break;
-			case ModemConfig1Field::CodingRate:
-				params = is_sx1272_plus_v<Model> ?
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CodingRate,
-												  Sm72_Series) :
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CodingRate,
-												  Sm76_Series);
-				break;
-			case ModemConfig1Field::HeaderMode:
-				params = is_sx1272_plus_v<Model> ?
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::HeaderMode,
-												  Sm72_Series) :
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::HeaderMode,
-												  Sm76_Series);
-				break;
-			case ModemConfig1Field::CRC:
-				params = is_sx1272_plus_v<Model> ?
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CRC,
-												  Sm72_Series) :
-							 getFieldConfigParams(REG::MODEM_CONFIG1, ModemConfig1Field::CRC,
-												  Sm76_Series);
-				break;
-			case ModemConfig1Field::LowDataOptimization:
-				params =
-					is_sx1272_plus_v<Model> ?
-						getFieldConfigParams(REG::MODEM_CONFIG1,
-											 ModemConfig1Field::LowDataOptimization, Sm72_Series) :
-						getFieldConfigParams(REG::MODEM_CONFIG1,
-											 ModemConfig1Field::LowDataOptimization, Sm76_Series);
-				break;
+			params = getFieldConfigParams(REG::MODEM_CONFIG1, field, ChipSeries::SM72);
 		}
-
+		else
+		{
+			params = getFieldConfigParams(REG::MODEM_CONFIG1, field, ChipSeries::SM76);
+		}
 		uint8_t final_value = value << params.shift;
 		updateBits(params.mask, final_value);
 		return final_value;
@@ -342,7 +296,7 @@ struct Register
 	}
 
 	template<typename FieldType>
-	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, ChipSeries chipType)
+	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, ChipSeries chipSeries)
 	{
 		const RegInfo* info = lookupRegInfo(r);
 		if(info && info->fieldConfigs)
@@ -353,7 +307,7 @@ struct Register
 
 			for(size_t i = 0; i < info->fieldConfigCount; ++i)
 			{
-				if(configs[i].field == field && configs[i].chipType == chipType)
+				if(configs[i].field == field && configs[i].chip_series == chipSeries)
 				{
 					return configs[i].params;
 				}
