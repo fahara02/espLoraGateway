@@ -44,30 +44,6 @@ void LoRaModem<Model>::setFrequency(uint32_t freq)
 	spiBus_.writeRegister(fMID->address, static_cast<uint8_t>((temp_bytes >> 8) & 0xFF)); // MID
 	spiBus_.writeRegister(fLSB->address, static_cast<uint8_t>((temp_bytes >> 0) & 0xFF)); // LSB
 }
-template<ChipModel Model>
-uint8_t LoRaModem<Model>::setCodingRate(CodingRate rate, bool sendSPI)
-{
-	return updateModemConfig1(static_cast<uint8_t>(rate), Field_ModemConfig1::CodingRate, sendSPI);
-}
-
-template<ChipModel Model>
-uint8_t LoRaModem<Model>::setImplicitHeader(HeaderMode mode, bool sendSPI)
-{
-	return updateModemConfig1(static_cast<uint8_t>(mode), Field_ModemConfig1::HeaderMode, sendSPI);
-}
-
-template<ChipModel Model>
-uint8_t LoRaModem<Model>::setCRC(CRCMode mode, bool sendSPI)
-{
-	return updateModemConfig1(static_cast<uint8_t>(mode), Field_ModemConfig1::CRC, sendSPI);
-}
-
-template<ChipModel Model>
-uint8_t LoRaModem<Model>::setLowDataOptimization(LowDataRateOptimize mode, bool sendSPI)
-{
-	return updateModemConfig1(static_cast<uint8_t>(mode), Field_ModemConfig1::LowDataOptimization,
-							  sendSPI);
-}
 
 template<ChipModel Model>
 void LoRaModem<Model>::hop()

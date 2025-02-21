@@ -38,6 +38,11 @@ class LoRaModem
 		return updateModemConfig1(static_cast<uint8_t>(bw), Field_ModemConfig1::Bandwidth, sendSPI);
 	}
 
+	template<Field_ModemConfig1 Field, typename ValueType>
+	uint8_t setModemConfig1(ValueType value, bool sendSPI)
+	{
+		return updateModemConfig1(static_cast<uint8_t>(value), Field, sendSPI);
+	}
 	uint8_t setCodingRate(CodingRate rate, bool sendSPI);
 	uint8_t setImplicitHeader(HeaderMode mode, bool sendSPI);
 	uint8_t setCRC(CRCMode mode, bool sendSPI);

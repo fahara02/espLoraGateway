@@ -152,7 +152,7 @@ struct Register
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
-		setOptMode(const ConfigureOptMode<Model>& optmode)
+		setOptMode(const Setting_OptMode<Model>& optmode)
 	{
 		value = (value & ~((1 << 7) | (1 << 6) | (1 << 3) | 0b111));
 

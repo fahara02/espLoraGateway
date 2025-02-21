@@ -126,13 +126,22 @@ struct NoLowFreqMode
 };
 
 template<ChipModel Model>
-struct ConfigureOptMode
+struct Setting_OptMode
 {
 	LongRangeMode long_range;
 	AccessSharedReg shared_reg;
 	// Select LowFreqMode for SX1276 (or similar models), or NoLowFreqMode otherwise.
 	typename etl::conditional<is_sx1276_plus_v<Model>, LowFreqMode, NoLowFreqMode>::type low_freq;
 	TransceiverModes transceiver;
+};
+
+enum class Field_ModemConfig1 : uint8_t
+{
+	Bandwidth,
+	CodingRate,
+	HeaderMode,
+	CRC,
+	LowDataOptimization
 };
 
 enum class CodingRate : uint8_t
@@ -191,14 +200,14 @@ struct SignalBandWidth
 		typename etl::conditional<is_sx1276_plus_v<Model>, SignalBandwidth_76, void>::type>::type;
 };
 
-enum class Field_ModemConfig1 : uint8_t
-{
-	Bandwidth,
-	CodingRate,
-	HeaderMode,
-	CRC,
-	LowDataOptimization
-};
+// enum class Field_ModemConfig1 : uint8_t
+// {
+// 	Bandwidth,
+// 	CodingRate,
+// 	HeaderMode,
+// 	CRC,
+// 	LowDataOptimization
+// };
 
 template<ChipModel Model>
 struct Setting_ModemConfig1

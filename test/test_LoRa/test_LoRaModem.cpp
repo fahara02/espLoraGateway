@@ -44,7 +44,7 @@ void MockLoRaModem::testOptMode()
 	// Test 4: Using the ConfigureOptMode structure.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
-		ConfigureOptMode<Model::SX1276> config = {
+		Setting_OptMode<Model::SX1276> config = {
 			LongRangeMode::LORA, // LORA → (1 << 7) = 128
 			AccessSharedReg::ACCESS_FSK, // ACCESS_FSK → (1 << 6) = 64
 			LowFreqMode::HIGH_FREQUENCY_MODE,
@@ -64,7 +64,8 @@ void MockLoRaModem::testBandwidth()
 	using BandwidthType = typename LoRa::LoRaModem<LoRa::ChipModel::SX1276>::Bandwidth;
 	BandwidthType bw = BandwidthType::BW_250_KHZ;
 
-	uint8_t result76 = modem.setBandWidth(bw, false);
+	uint8_t result76 =
+		modem.setModemConfig1<Field_ModemConfig1::Bandwidth, BandwidthType>(bw, false);
 	uint8_t expected76 = static_cast<uint8_t>(SignalBandwidth_76::BW_250_KHZ) << 4;
 
 	TEST_ASSERT_EQUAL_UINT8(expected76, result76);
