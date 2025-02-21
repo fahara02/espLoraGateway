@@ -34,17 +34,27 @@ class LoRaModem
 	void startReceiver();
 	// Modem Config1 Registers Functions
 
+	// uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
+	// {
+	// 	auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
+	// 	uint8_t setValue = reg->template setBandWidth<REG::MODEM_CONFIG1, Model>(bw);
+
+	// 	if(sendSPI)
+	// 	{
+	// 		spiBus_.writeRegister(reg->address, setValue);
+	// 	}
+	// 	return setValue;
+	// }
+
 	uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
 	{
-		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
-		uint8_t setValue = reg->template setBandWidth<REG::MODEM_CONFIG1, Model>(bw);
-
-		if(sendSPI)
-		{
-			spiBus_.writeRegister(reg->address, setValue);
-		}
-		return setValue;
+		return updateModemConfig1(
+			[&](auto reg) {
+				return reg->template setBandWidth<REG::MODEM_CONFIG1, Model>(bw);
+			},
+			sendSPI);
 	}
+
 	uint8_t setCodingRate(CodingRate rate, bool sendSPI);
 	uint8_t setImplicitHeader(HeaderMode mode, bool sendSPI);
 	uint8_t setCRC(CRCMode mode, bool sendSPI);
@@ -148,19 +158,16 @@ class LoRaModem
 		auto it = LoRaFrequencies.find(band);
 		return (it != LoRaFrequencies.end()) ? &(it->second) : nullptr;
 	}
-	uint8_t updateModemConfig(REG reg, uint8_t value, const Register::ConfigParams& params,
-							  bool sendSPI)
+	template<typename Func>
+	uint8_t updateModemConfig1(Func&& setter, bool sendSPI)
 	{
-		auto reg_ptr = registers_.getRegister(reg);
-		uint8_t final_value = value << params.shift;
-
+		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
+		uint8_t value = setter(reg); // Perform the specific register operation
 		if(sendSPI)
 		{
-			spiBus_.writeRegister(reg_ptr->address, final_value);
+			spiBus_.writeRegister(reg->address, value);
 		}
-
-		reg_ptr->updateBits(params.mask, final_value);
-		return final_value;
+		return value;
 	}
 };
 

@@ -395,6 +395,46 @@ struct Register
 
 		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(rate), params);
 	}
+
+	template<REG T, ChipModel Model>
+	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type setCRC(CRCMode mode)
+	{
+		Register::ConfigParams params;
+
+		if constexpr(is_sx1272_plus_v<Model>)
+		{
+			params = {1, 0b00000010}; // Example values, adjust as needed
+		}
+
+		else
+		{
+			LOG::ERROR(LORA_REG, "Unsupported chip model for CRC setting");
+			return 0;
+		}
+
+		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(mode), params);
+	}
+
+	template<REG T, ChipModel Model>
+	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
+		setLowDataOptimization(LowDataRateOptimize mode)
+	{
+		Register::ConfigParams params;
+
+		if constexpr(is_sx1272_plus_v<Model>)
+		{
+			params = {0, 0b00000001}; // Example values, adjust as needed
+		}
+
+		else
+		{
+			LOG::ERROR(LORA_REG, "Unsupported chip model for low data optimization");
+			return 0;
+		}
+
+		return updateModemConfig<REG::MODEM_CONFIG1>(static_cast<uint8_t>(mode), params);
+	}
+
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
 		configureModem(const ModemConfig1<Model>& config)
