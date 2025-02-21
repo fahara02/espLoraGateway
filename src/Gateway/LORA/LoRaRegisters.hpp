@@ -4,6 +4,7 @@
 #include "sm127XX.hpp"
 #include "etl/array.h"
 #include "etl/optional.h"
+
 #include "Logger.hpp"
 #define LORA_REG "LORA_REGISTER"
 
@@ -78,6 +79,21 @@ struct RegInfo
 	size_t fieldConfigCount;
 };
 
+constexpr OptModeFieldConfig OptModeFieldConfigs[] = {
+	// LongRangeMode:
+	{Field_OptMode::LongRangeMode, ChipSeries::SM72, {7, 0b10000000}},
+	{Field_OptMode::LongRangeMode, ChipSeries::SM76, {7, 0b10000000}},
+	// AccessShared Reg:
+	{Field_OptMode::AccessSharedReg, ChipSeries::SM72, {6, 0b01000000}},
+	{Field_OptMode::AccessSharedReg, ChipSeries::SM76, {6, 0b01000000}},
+	// LowFreqMode (only defined for Sm76 series):
+	{Field_OptMode::LowFreqMode, ChipSeries::SM76, {3, 0b00001000}},
+	// TransceiverModes
+	{Field_OptMode::TransceiverModes, ChipSeries::SM72, {0, 0b00000111}},
+	{Field_OptMode::TransceiverModes, ChipSeries::SM76, {0, 0b00000111}},
+
+};
+
 constexpr ModemConfig1FieldConfig modemConfig1FieldConfigs[] = {
 	// Bandwidth:
 	{Field_ModemConfig1::Bandwidth, ChipSeries::SM72, {6, 0b11000000}},
@@ -126,6 +142,33 @@ struct Register
 	{
 		const RegInfo* info = lookupRegInfo(r);
 		return info ? info->mode : REG_MODE::ANY;
+	}
+
+	template<REG Reg, typename Field>
+	uint8_t updateRegisterField(const Field field, uint8_t value)
+	{
+		const ChipSeries series = isSx1272Plus(model) ? ChipSeries::SM72 : ChipSeries::SM76;
+
+		ConfigParams params = getFieldConfigParams(Reg, field, series);
+
+		uint8_t final_value = value << params.shift;
+		updateBits(params.mask, final_value);
+
+		return final_value;
+	}
+
+	template<typename ValueType>
+
+	uint8_t updateOptMode(const Field_OptMode field, ValueType value)
+	{
+		return updateRegisterField<REG::OPMODE, Field_OptMode>(field, static_cast<uint8_t>(value));
+	}
+
+	template<typename ValueType>
+	uint8_t updateModemConfig(const Field_ModemConfig1 field, ValueType value)
+	{
+		return updateRegisterField<REG::MODEM_CONFIG1, Field_ModemConfig1>(
+			field, static_cast<uint8_t>(value));
 	}
 
 	template<REG T>
@@ -216,30 +259,16 @@ struct Register
 	{
 		value = (value & ~mask) | (newValue & mask);
 	}
-	template<REG T, ChipModel Model>
-	typename std::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		updateModemConfig(uint8_t value, const Field_ModemConfig1 field)
-	{
-		ConfigParams params;
-		if constexpr(isSx1272Plus(Model))
-		{
-			params = getFieldConfigParams(REG::MODEM_CONFIG1, field, ChipSeries::SM72);
-		}
-		else
-		{
-			params = getFieldConfigParams(REG::MODEM_CONFIG1, field, ChipSeries::SM76);
-		}
-		uint8_t final_value = value << params.shift;
-		updateBits(params.mask, final_value);
-		return final_value;
-	}
+
+	// Common helper that performs the shared functionality.
 
   private:
 	uint8_t value;
 
 	static constexpr etl::array<RegInfo, REG_COUNT> regTable{
 		{{REG::FIFO, 0x00, REG_MODE::READ_WRITE, 0x00},
-		 {REG::OPMODE, 0x01, REG_MODE::READ_WRITE, 0x00},
+		 {REG::OPMODE, 0x01, REG_MODE::READ_WRITE, 0x00, OptModeFieldConfigs,
+		  sizeof(OptModeFieldConfigs) / sizeof(OptModeFieldConfigs[0])},
 		 {REG::FRF_MSB, 0x06, REG_MODE::READ_WRITE, 0x6C},
 		 {REG::FRF_MID, 0x07, REG_MODE::READ_WRITE, 0x80},
 		 {REG::FRF_LSB, 0x08, REG_MODE::READ_WRITE, 0x00},

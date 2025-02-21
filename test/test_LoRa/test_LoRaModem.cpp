@@ -16,7 +16,7 @@ void MockLoRaModem::testOptMode()
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
 		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).
-		uint8_t result = reg.setOptMode<REG::OPMODE>(LongRangeMode::LORA);
+		uint8_t result = reg.updateOptMode(Field_OptMode::LongRangeMode, LongRangeMode::LORA);
 		TEST_ASSERT_EQUAL_UINT8(0x80, result);
 
 		// Calling with RX; assuming RX is defined as 5.

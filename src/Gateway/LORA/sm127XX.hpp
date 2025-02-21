@@ -135,13 +135,12 @@ struct Setting_OptMode
 	TransceiverModes transceiver;
 };
 
-enum class Field_ModemConfig1 : uint8_t
+enum class Field_OptMode : uint8_t
 {
-	Bandwidth,
-	CodingRate,
-	HeaderMode,
-	CRC,
-	LowDataOptimization
+	LongRangeMode,
+	AccessSharedReg,
+	LowFreqMode,
+	TransceiverModes
 };
 
 enum class CodingRate : uint8_t
@@ -200,14 +199,14 @@ struct SignalBandWidth
 		typename etl::conditional<is_sx1276_plus_v<Model>, SignalBandwidth_76, void>::type>::type;
 };
 
-// enum class Field_ModemConfig1 : uint8_t
-// {
-// 	Bandwidth,
-// 	CodingRate,
-// 	HeaderMode,
-// 	CRC,
-// 	LowDataOptimization
-// };
+enum class Field_ModemConfig1 : uint8_t
+{
+	Bandwidth,
+	CodingRate,
+	HeaderMode,
+	CRC,
+	LowDataOptimization
+};
 
 template<ChipModel Model>
 struct Setting_ModemConfig1
@@ -235,7 +234,7 @@ struct FieldConfig
 	ChipSeries chip_series;
 	ConfigParams params; // The bit shift and mask for this field
 };
-
+using OptModeFieldConfig = FieldConfig<Field_OptMode>;
 using ModemConfig1FieldConfig = FieldConfig<Field_ModemConfig1>;
 
 } // namespace LoRa

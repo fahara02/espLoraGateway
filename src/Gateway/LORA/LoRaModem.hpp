@@ -154,7 +154,7 @@ class LoRaModem
 	uint8_t updateModemConfig1(uint8_t value, Field_ModemConfig1 field, bool sendSPI)
 	{
 		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
-		reg->template updateModemConfig<REG::MODEM_CONFIG1, Model>(value, field);
+		reg->template updateModemConfig(field, value);
 
 		uint8_t updatedValue = reg->getValue(); // Retrieve the modified register value
 
