@@ -68,12 +68,12 @@ struct Register
 		return info ? info->mode : REG_MODE::ANY;
 	}
 
-	template<REG Reg, typename Field>
+	template<typename Field>
 	uint8_t updateRegisterField(const Field field, uint8_t new_value)
 	{
 		const ChipSeries series = isSx1272Plus(model) ? ChipSeries::SM72 : ChipSeries::SM76;
 
-		ConfigParams params = getFieldConfigParams(Reg, field, series);
+		ConfigParams params = getFieldConfigParams(reg, field, series);
 
 		uint8_t shifted_value = new_value << params.shift;
 		updateBits(params.mask, shifted_value);
@@ -85,15 +85,13 @@ struct Register
 
 	uint8_t updateOptMode(const Field_OptMode field, ValueType new_value)
 	{
-		return updateRegisterField<REG::OPMODE, Field_OptMode>(field,
-															   static_cast<uint8_t>(new_value));
+		return updateRegisterField<Field_OptMode>(field, static_cast<uint8_t>(new_value));
 	}
 
 	template<typename ValueType>
 	uint8_t updateModemConfig(const Field_ModemConfig1 field, ValueType new_value)
 	{
-		return updateRegisterField<REG::MODEM_CONFIG1, Field_ModemConfig1>(
-			field, static_cast<uint8_t>(new_value));
+		return updateRegisterField<Field_ModemConfig1>(field, static_cast<uint8_t>(new_value));
 	}
 
 	template<REG T, ChipModel Model>

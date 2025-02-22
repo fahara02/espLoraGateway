@@ -66,7 +66,6 @@ void MockLoRaModem::testOptModeModem()
 
 	// Test 1: Using LongRangeMode only.
 	{
-		Register reg(ChipModel::SX1276, REG::OPMODE);
 		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 1
 		uint8_t result = modem.setOptMode(Field_OptMode::LongRangeMode, LongRangeMode::LORA);
 		TEST_ASSERT_EQUAL_UINT8(0x81, result);
@@ -121,7 +120,7 @@ void MockLoRaModem::testBandwidth()
 	BandwidthType bw = BandwidthType::BW_250_KHZ;
 
 	uint8_t result76 =
-		modem.setModemConfig1<Field_ModemConfig1::Bandwidth, BandwidthType>(bw, false);
+		modem.setModemConfig1<BandwidthType>(Field_ModemConfig1::Bandwidth, bw, false);
 	uint8_t expected76 = static_cast<uint8_t>(SignalBandwidth_76::BW_250_KHZ) << 4;
 
 	TEST_ASSERT_EQUAL_UINT8(expected76, result76);
