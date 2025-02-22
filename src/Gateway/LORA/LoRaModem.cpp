@@ -1,19 +1,19 @@
 #include "LoRaModem.hpp"
 namespace LoRa
 {
-template<ChipModel Model>
-template<typename Mode>
-void LoRaModem<Model>::opmode(const Mode& mode)
-{
-	auto reg = registers_.getRegister(REG::OPMODE);
-	uint8_t setValue = reg->setOptMode<REG::OPMODE>(mode);
-	spiBus_.writeRegister(reg->address, setValue & 0xFF);
-}
+// template<ChipModel Model>
+// template<typename Mode>
+// void LoRaModem<Model>::opmode(const Mode& mode)
+// {
+// 	auto reg = registers_.getRegister(REG::OPMODE);
+// 	uint8_t setValue = reg->setOptMode<REG::OPMODE>(mode);
+// 	spiBus_.writeRegister(reg->address, setValue & 0xFF);
+// }
 
 template<ChipModel Model>
 void LoRaModem<Model>::setFrequency(uint32_t freq)
 {
-	opmode<tMode>(tMode::STANDBY);
+	// opmode<tMode>(tMode::STANDBY);
 
 	auto fMSB = registers_.getRegister(REG::FRF_MSB);
 	auto fMID = registers_.getRegister(REG::FRF_MID);
@@ -48,7 +48,7 @@ void LoRaModem<Model>::setFrequency(uint32_t freq)
 template<ChipModel Model>
 void LoRaModem<Model>::hop()
 {
-	opmode<tMode>(tMode::STANDBY);
+	// opmode<tMode>(tMode::STANDBY);
 }
 
 } // namespace LoRa

@@ -276,7 +276,27 @@ template<ChipModel Model>
 class LoRaRegisters
 {
   public:
-	constexpr LoRaRegisters() :
+	static LoRaRegisters& getInstance()
+	{
+		static LoRaRegisters instance;
+		return instance;
+	}
+
+	Register* getRegister(REG reg)
+	{
+		for(auto& r: registers)
+		{
+			if(r.reg == reg)
+			{
+				return &r;
+			}
+		}
+		return nullptr;
+	}
+
+  private:
+	// Private constructor to enforce Singleton pattern
+	LoRaRegisters() :
 		registers{
 			Register(Model, REG::FIFO),
 			Register(Model, REG::OPMODE),
@@ -326,17 +346,9 @@ class LoRaRegisters
 	{
 	}
 
-	etl::optional<Register> getRegister(REG reg) const
-	{
-		for(const auto& r: registers)
-		{
-			if(r.reg == reg)
-			{
-				return r;
-			}
-		}
-		return etl::nullopt;
-	}
+	// Prevent copying and moving
+	LoRaRegisters(const LoRaRegisters&) = delete;
+	LoRaRegisters& operator=(const LoRaRegisters&) = delete;
 
   private:
 	etl::array<Register, REG_COUNT> registers;

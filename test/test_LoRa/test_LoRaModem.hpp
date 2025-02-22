@@ -18,7 +18,8 @@ class MockLoRaModem : public LoRaModem<ChipModel::SX1276>
 	static void runAllTests();
 
   private:
-	static void testOptMode();
+	static void testOptModeRegister();
+	static void testOptModeModem();
 	static void testBandwidth();
 	static void testModemConfig1();
 };

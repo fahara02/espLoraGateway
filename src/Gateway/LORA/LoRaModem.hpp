@@ -26,7 +26,7 @@ class LoRaModem
 		frequencyPlan_((frequencytable_ && bandIndex < LORA_MAX_CHANNEL) ?
 						   (*frequencytable_)[bandIndex] :
 						   FrequencyPlan{}),
-		pins_(LoRaBoard::getPinConfig(model_))
+		pins_(LoRaBoard::getPinConfig(model_)), registers_(LoRaRegisters<Model>::getInstance())
 	{
 		init();
 	}
@@ -38,21 +38,20 @@ class LoRaModem
 		return updateModemConfig1(static_cast<uint8_t>(bw), Field_ModemConfig1::Bandwidth, sendSPI);
 	}
 
+	int getRegValue(REG r) const
+	{
+		auto reg = registers_.getRegister(r);
+		return reg ? reg->getValue() : -1;
+	}
+
 	template<Field_ModemConfig1 Field, typename ValueType>
-	uint8_t setModemConfig1(ValueType value, bool sendSPI)
+	uint8_t setModemConfig1(ValueType value, bool sendSPI = false)
 	{
 		return updateModemConfig1(static_cast<uint8_t>(value), Field, sendSPI);
 	}
-	uint8_t setCodingRate(CodingRate rate, bool sendSPI);
-	uint8_t setImplicitHeader(HeaderMode mode, bool sendSPI);
-	uint8_t setCRC(CRCMode mode, bool sendSPI);
-	uint8_t setLowDataOptimization(LowDataRateOptimize mode, bool sendSPI);
 
 	void setFrequency(uint32_t freq);
 	void setPow(uint8_t pow);
-
-	template<typename Mode>
-	void opmode(const Mode& mode);
 
 	void hop();
 	uint8_t receivePkt(uint8_t* payload);
@@ -61,6 +60,36 @@ class LoRaModem
 	const ChipModel getChipModel() const
 	{
 		return chipModel_;
+	}
+	template<typename ValueType>
+	uint8_t setOptMode(Field_OptMode field, ValueType value, bool sendSPI = false)
+	{
+		auto reg = registers_.getRegister(REG::OPMODE);
+		LOG::DEBUG(MODEM_TAG, "Before update: %02X", reg->getValue());
+
+		reg->template updateOptMode<ValueType>(field, value);
+		LOG::DEBUG(MODEM_TAG, "After update: %02X", reg->getValue());
+		uint8_t updatedValue = reg->getValue(); // Retrieve the modified register value
+
+		if(sendSPI)
+		{
+			spiBus_.writeRegister(reg->address, updatedValue);
+		}
+		return updatedValue; // Return the actual modified register value
+	}
+
+	uint8_t updateModemConfig1(uint8_t value, Field_ModemConfig1 field, bool sendSPI)
+	{
+		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
+		reg->template updateModemConfig(field, value);
+
+		uint8_t updatedValue = reg->getValue(); // Retrieve the modified register value
+
+		if(sendSPI)
+		{
+			spiBus_.writeRegister(reg->address, updatedValue);
+		}
+		return updatedValue; // Return the actual modified register value
 	}
 
   private:
@@ -71,7 +100,7 @@ class LoRaModem
 	const LoRaFreqTable* frequencytable_;
 	const FrequencyPlan frequencyPlan_;
 	LoRaPins pins_;
-	LoRaRegisters<Model> registers_;
+	LoRaRegisters<Model>& registers_;
 
 	volatile ReceiverState rxState_ = ReceiverState::S_INIT;
 	volatile uint8_t event_ = 0;
@@ -149,20 +178,6 @@ class LoRaModem
 	{
 		auto it = LoRaFrequencies.find(band);
 		return (it != LoRaFrequencies.end()) ? &(it->second) : nullptr;
-	}
-
-	uint8_t updateModemConfig1(uint8_t value, Field_ModemConfig1 field, bool sendSPI)
-	{
-		auto reg = registers_.getRegister(REG::MODEM_CONFIG1);
-		reg->template updateModemConfig(field, value);
-
-		uint8_t updatedValue = reg->getValue(); // Retrieve the modified register value
-
-		if(sendSPI)
-		{
-			spiBus_.writeRegister(reg->address, updatedValue);
-		}
-		return updatedValue; // Return the actual modified register value
 	}
 };
 
