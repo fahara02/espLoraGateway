@@ -10,22 +10,12 @@
 
 namespace LoRa
 {
-enum class REG_MODE
-{
-	READ_ONLY,
-	WRITE_ONLY,
-	READ_WRITE,
-	SET_TO_CLEAR,
-	TRIGGER,
-	READ_WRITE_TRIGGER,
-	ANY
-};
 
 struct RegInfo
 {
 	REG reg;
 	uint8_t address;
-	REG_MODE mode;
+	MODE mode; // generalised Mode register level
 	uint8_t defaultValue;
 	const void* fieldConfigs;
 	size_t fieldConfigCount;
@@ -35,16 +25,16 @@ struct Register
 {
 	const ChipModel model;
 	const REG reg;
-	const REG_MODE mode;
+	const MODE mode;
 	const uint8_t address;
 
 	template<ChipModel Model>
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
-	using OptModeFieldMap = typename SettingBase<Field_OptMode>::FieldsConfig;
-	using ModeConfig1FieldsMap = typename SettingBase<Field_ModemConfig1>::FieldsConfig;
+	using OptModeField = typename SettingBase<optField>::FieldsConfig;
+	using ModeConfig1Field = typename SettingBase<config1Field>::FieldsConfig;
 
 	constexpr Register() :
-		model(ChipModel::SX1276), reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value_(0)
+		model(ChipModel::SX1276), reg(REG::FIFO), mode(MODE::RW), address(0), value_(0)
 	{
 	}
 	constexpr Register(ChipModel m, REG r) :
@@ -62,16 +52,16 @@ struct Register
 		const RegInfo* info = lookupRegInfo(r);
 		return info ? info->defaultValue : 0xFF;
 	}
-	constexpr REG_MODE getRegMode(REG r)
+	constexpr MODE getRegMode(REG r)
 	{
 		const RegInfo* info = lookupRegInfo(r);
-		return info ? info->mode : REG_MODE::ANY;
+		return info ? info->mode : MODE::ANY;
 	}
 
 	template<typename Field>
 	uint8_t updateRegisterField(const Field field, uint8_t new_value)
 	{
-		const ChipSeries series = isSx1272Plus(model) ? ChipSeries::SM72 : ChipSeries::SM76;
+		const Series series = isSx1272Plus(model) ? Series::SM72 : Series::SM76;
 
 		ConfigParams params = getFieldConfigParams(reg, field, series);
 
@@ -83,15 +73,15 @@ struct Register
 
 	template<typename ValueType>
 
-	uint8_t updateOptMode(const Field_OptMode field, ValueType new_value)
+	uint8_t updateOptMode(const optField field, ValueType new_value)
 	{
-		return updateRegisterField<Field_OptMode>(field, static_cast<uint8_t>(new_value));
+		return updateRegisterField<optField>(field, static_cast<uint8_t>(new_value));
 	}
 
 	template<typename ValueType>
-	uint8_t updateModemConfig(const Field_ModemConfig1 field, ValueType new_value)
+	uint8_t updateModemConfig(const config1Field field, ValueType new_value)
 	{
-		return updateRegisterField<Field_ModemConfig1>(field, static_cast<uint8_t>(new_value));
+		return updateRegisterField<config1Field>(field, static_cast<uint8_t>(new_value));
 	}
 
 	template<REG T, ChipModel Model>
@@ -162,80 +152,80 @@ struct Register
   private:
 	uint8_t value_;
 
-	static constexpr etl::array<OptModeFieldMap, 7> optModeFields = {
-		OptModeFieldMap{Field_OptMode::LongRangeMode, ChipSeries::SM72, {7, 0b10000000}},
-		OptModeFieldMap{Field_OptMode::LongRangeMode, ChipSeries::SM76, {7, 0b10000000}},
-		OptModeFieldMap{Field_OptMode::AccessSharedReg, ChipSeries::SM72, {6, 0b01000000}},
-		OptModeFieldMap{Field_OptMode::AccessSharedReg, ChipSeries::SM76, {6, 0b01000000}},
-		OptModeFieldMap{
-			Field_OptMode::LowFreqMode, ChipSeries::SM76, {3, 0b00001000}}, // Only for SM76
-		OptModeFieldMap{Field_OptMode::TransceiverModes, ChipSeries::SM72, {0, 0b00000111}},
-		OptModeFieldMap{Field_OptMode::TransceiverModes, ChipSeries::SM76, {0, 0b00000111}},
+	static constexpr etl::array<OptModeField, 7> optModeFields = {
+		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM72, {7, 0b10000000}, 0},
+		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM76, {7, 0b10000000}, 0},
+		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM72, {6, 0b01000000}, 0},
+		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM76, {6, 0b01000000}, 0},
+		// Only for SM76
+		OptModeField{optField::LowFreqMode, MODE::RW, Series::SM76, {3, 0b00001000}, 0x1},
+		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM72, {0, 0b00000111}, 0x1},
+		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM76, {0, 0b00000111}, 0x1},
 	};
 
-	static constexpr etl::array<ModeConfig1FieldsMap, 8> modemConfig1Fields = {
+	static constexpr etl::array<ModeConfig1Field, 8> modemConfig1Fields = {
 		// Bandwidth:
-		ModeConfig1FieldsMap{Field_ModemConfig1::Bandwidth, ChipSeries::SM72, {6, 0b11000000}},
-		ModeConfig1FieldsMap{Field_ModemConfig1::Bandwidth, ChipSeries::SM76, {4, 0b11110000}},
+		ModeConfig1Field{config1Field::Bandwidth, MODE::RW, Series::SM72, {6, 0b11000000}, 0x0},
+		ModeConfig1Field{config1Field::Bandwidth, MODE::RW, Series::SM76, {4, 0b11110000}, 0x0},
 		// Coding Rate:
-		ModeConfig1FieldsMap{Field_ModemConfig1::CodingRate, ChipSeries::SM72, {3, 0b00111000}},
-		{Field_ModemConfig1::CodingRate, ChipSeries::SM76, {1, 0b00001110}},
+		ModeConfig1Field{config1Field::CodingRate, MODE::RW, Series::SM72, {3, 0b00111000}, 0x0},
+		{config1Field::CodingRate, MODE::RW, Series::SM76, {1, 0b00001110}, 0x0},
 		// HeaderMode
-		ModeConfig1FieldsMap{Field_ModemConfig1::HeaderMode, ChipSeries::SM72, {2, 0b00000100}},
-		ModeConfig1FieldsMap{Field_ModemConfig1::HeaderMode, ChipSeries::SM76, {0, 0b00000001}},
+		ModeConfig1Field{config1Field::HeaderMode, MODE::RW, Series::SM72, {2, 0b00000100}, 0x0},
+		ModeConfig1Field{config1Field::HeaderMode, MODE::RW, Series::SM76, {0, 0b00000001}, 0x0},
 		// CRC (only defined for Sm72 series):
-		ModeConfig1FieldsMap{Field_ModemConfig1::CRC, ChipSeries::SM72, {1, 0b00000010}},
+		ModeConfig1Field{config1Field::CRC, MODE::RW, Series::SM72, {1, 0b00000010}, 0x0},
 		// Low Data Optimization (only defined for Sm72 series):
-		ModeConfig1FieldsMap{
-			Field_ModemConfig1::LowDataOptimization, ChipSeries::SM72, {0, 0b00000001}}};
+		ModeConfig1Field{
+			config1Field::LowDataOptimization, MODE::RW, Series::SM72, {0, 0b00000001}, 0x0}};
 
-	static constexpr etl::array<RegInfo, REG_COUNT> regTable{
-		{{REG::FIFO, 0x00, REG_MODE::READ_WRITE, 0x00},
-		 {REG::OPMODE, 0x01, REG_MODE::READ_WRITE, 0x01,
-		  static_cast<const void*>(optModeFields.data()), optModeFields.size()},
-		 {REG::FRF_MSB, 0x06, REG_MODE::READ_WRITE, 0x6C},
-		 {REG::FRF_MID, 0x07, REG_MODE::READ_WRITE, 0x80},
-		 {REG::FRF_LSB, 0x08, REG_MODE::READ_WRITE, 0x00},
-		 {REG::PAC, 0x09, REG_MODE::READ_WRITE, 0x00},
-		 {REG::PARAMP, 0x0A, REG_MODE::READ_WRITE, 0x00},
-		 {REG::OCP, 0x0B, REG_MODE::READ_WRITE, 0x00},
-		 {REG::LNA, 0x0C, REG_MODE::READ_WRITE, 0x00},
-		 {REG::FIFO_ADDR_PTR, 0x0D, REG_MODE::READ_WRITE, 0x00},
-		 {REG::FIFO_TX_BASE_AD, 0x0E, REG_MODE::READ_WRITE, 0x00},
-		 {REG::FIFO_RX_BASE_AD, 0x0F, REG_MODE::READ_WRITE, 0x00},
-		 {REG::FIFO_RX_CURRENT_ADDR, 0x10, REG_MODE::READ_ONLY, 0x00},
-		 {REG::IRQ_FLAGS_MASK, 0x11, REG_MODE::READ_WRITE, 0x00},
-		 {REG::IRQ_FLAGS, 0x12, REG_MODE::SET_TO_CLEAR, 0x00},
-		 {REG::RX_BYTES_NB, 0x13, REG_MODE::READ_ONLY, 0x00},
-		 {REG::PKT_SNR_VALUE, 0x19, REG_MODE::READ_ONLY, 0x00},
-		 {REG::PKT_RSSI, 0x1A, REG_MODE::READ_ONLY, 0x00},
-		 {REG::HOP_CHANNEL, 0x1C, REG_MODE::READ_ONLY, 0x00},
-		 {REG::MODEM_CONFIG1, 0x1D, REG_MODE::READ_WRITE, 0x00,
+	static constexpr etl::array<RegInfo, REG_COUNT> regTable = {
+		{{REG::FIFO, 0x00, MODE::RW, 0x00},
+		 {REG::OPMODE, 0x01, MODE::RW, 0x09, static_cast<const void*>(optModeFields.data()),
+		  optModeFields.size()},
+		 {REG::FRF_MSB, 0x06, MODE::RW, 0x6C},
+		 {REG::FRF_MID, 0x07, MODE::RW, 0x80},
+		 {REG::FRF_LSB, 0x08, MODE::RW, 0x00},
+		 {REG::PAC, 0x09, MODE::RW, 0x00},
+		 {REG::PARAMP, 0x0A, MODE::RW, 0x00},
+		 {REG::OCP, 0x0B, MODE::RW, 0x00},
+		 {REG::LNA, 0x0C, MODE::RW, 0x00},
+		 {REG::FIFO_ADDR_PTR, 0x0D, MODE::RW, 0x00},
+		 {REG::FIFO_TX_BASE_AD, 0x0E, MODE::RW, 0x00},
+		 {REG::FIFO_RX_BASE_AD, 0x0F, MODE::RW, 0x00},
+		 {REG::FIFO_RX_CURRENT_ADDR, 0x10, MODE::R, 0x00},
+		 {REG::IRQ_FLAGS_MASK, 0x11, MODE::RW, 0x00},
+		 {REG::IRQ_FLAGS, 0x12, MODE::SC, 0x00},
+		 {REG::RX_BYTES_NB, 0x13, MODE::R, 0x00},
+		 {REG::PKT_SNR_VALUE, 0x19, MODE::R, 0x00},
+		 {REG::PKT_RSSI, 0x1A, MODE::R, 0x00},
+		 {REG::HOP_CHANNEL, 0x1C, MODE::R, 0x00},
+		 {REG::MODEM_CONFIG1, 0x1D, MODE::RW, 0x00,
 		  static_cast<const void*>(modemConfig1Fields.data()), modemConfig1Fields.size()},
-		 {REG::MODEM_CONFIG2, 0x1E, REG_MODE::READ_WRITE, 0x00},
-		 {REG::SYMB_TIMEOUT_LSB, 0x1F, REG_MODE::READ_WRITE, 0x00},
-		 {REG::PREAMBLE_MSB, 0x20, REG_MODE::READ_WRITE, 0x00},
-		 {REG::PREAMBLE_LSB, 0x21, REG_MODE::READ_WRITE, 0x00},
-		 {REG::PAYLOAD_LENGTH, 0x22, REG_MODE::READ_WRITE, 0x00},
-		 {REG::MAX_PAYLOAD_LENGTH, 0x23, REG_MODE::READ_WRITE, 0x00},
-		 {REG::HOP_PERIOD, 0x24, REG_MODE::READ_WRITE, 0x00},
-		 {REG::FIFO_RX_BYTE_ADDR_PTR, 0x25, REG_MODE::READ_WRITE, 0x00},
-		 {REG::MODEM_CONFIG3, 0x26, REG_MODE::READ_WRITE, 0x00},
-		 {REG::PPM_CORRECTION, 0x27, REG_MODE::READ_WRITE, 0x00},
-		 {REG::FREQ_ERROR_MSB, 0x28, REG_MODE::READ_ONLY, 0x00},
-		 {REG::FREQ_ERROR_MID, 0x29, REG_MODE::READ_ONLY, 0x00},
-		 {REG::FREQ_ERROR_LSB, 0x2A, REG_MODE::READ_ONLY, 0x00},
-		 {REG::RSSI_WIDEBAND, 0x2C, REG_MODE::READ_ONLY, 0x00},
-		 {REG::DETECT_OPTIMIZE, 0x31, REG_MODE::READ_WRITE, 0x00},
-		 {REG::INVERTIQ, 0x33, REG_MODE::READ_WRITE, 0x00},
-		 {REG::DET_TRESH, 0x37, REG_MODE::READ_WRITE, 0x00},
-		 {REG::SYNC_WORD, 0x39, REG_MODE::READ_WRITE, 0x00},
-		 {REG::INVERTIQ2, 0x3B, REG_MODE::READ_WRITE, 0x00},
-		 {REG::TEMP, 0x3C, REG_MODE::READ_ONLY, 0x00},
-		 {REG::DIO_MAPPING_1, 0x40, REG_MODE::READ_WRITE, 0x00},
-		 {REG::DIO_MAPPING_2, 0x41, REG_MODE::READ_WRITE, 0x00},
-		 {REG::VERSION, 0x42, REG_MODE::READ_ONLY, 0x00},
-		 {REG::PADAC, 0x4D, REG_MODE::READ_WRITE, 0x00}}};
+		 {REG::MODEM_CONFIG2, 0x1E, MODE::RW, 0x00},
+		 {REG::SYMB_TIMEOUT_LSB, 0x1F, MODE::R, 0x00},
+		 {REG::PREAMBLE_MSB, 0x20, MODE::RW, 0x00},
+		 {REG::PREAMBLE_LSB, 0x21, MODE::RW, 0x00},
+		 {REG::PAYLOAD_LENGTH, 0x22, MODE::RW, 0x00},
+		 {REG::MAX_PAYLOAD_LENGTH, 0x23, MODE::RW, 0x00},
+		 {REG::HOP_PERIOD, 0x24, MODE::RW, 0x00},
+		 {REG::FIFO_RX_BYTE_ADDR_PTR, 0x25, MODE::RW, 0x00},
+		 {REG::MODEM_CONFIG3, 0x26, MODE::RW, 0x00},
+		 {REG::PPM_CORRECTION, 0x27, MODE::RW, 0x00},
+		 {REG::FREQ_ERROR_MSB, 0x28, MODE::R, 0x00},
+		 {REG::FREQ_ERROR_MID, 0x29, MODE::R, 0x00},
+		 {REG::FREQ_ERROR_LSB, 0x2A, MODE::R, 0x00},
+		 {REG::RSSI_WIDEBAND, 0x2C, MODE::R, 0x00},
+		 {REG::DETECT_OPTIMIZE, 0x31, MODE::RW, 0x00},
+		 {REG::INVERTIQ, 0x33, MODE::RW, 0x00},
+		 {REG::DET_TRESH, 0x37, MODE::RW, 0x00},
+		 {REG::SYNC_WORD, 0x39, MODE::RW, 0x00},
+		 {REG::INVERTIQ2, 0x3B, MODE::RW, 0x00},
+		 {REG::TEMP, 0x3C, MODE::R, 0x00},
+		 {REG::DIO_MAPPING_1, 0x40, MODE::RW, 0x00},
+		 {REG::DIO_MAPPING_2, 0x41, MODE::RW, 0x00},
+		 {REG::VERSION, 0x42, MODE::R, 0x00},
+		 {REG::PADAC, 0x4D, MODE::RW, 0x00}}};
 	constexpr const RegInfo* lookupRegInfo(REG r)
 	{
 		for(const auto& info: regTable)
@@ -249,7 +239,7 @@ struct Register
 	}
 
 	template<typename FieldType>
-	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, ChipSeries chipSeries)
+	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, Series chipSeries)
 	{
 		const RegInfo* info = lookupRegInfo(r);
 		if(info && info->fieldConfigs)

@@ -47,13 +47,13 @@ class LoRaModem
 	int loraWait(struct LoraDown* LoraDown);
 
 	template<typename ValueType>
-	uint8_t setOptMode(Field_OptMode field, ValueType value, bool sendSPI = false)
+	uint8_t setOptMode(optField field, ValueType value, bool sendSPI = false)
 	{
 		return updateRegister(REG::OPMODE, field, value, sendSPI);
 	}
 
 	template<typename ValueType>
-	uint8_t setModemConfig1(Field_ModemConfig1 field, ValueType value, bool sendSPI = false)
+	uint8_t setModemConfig1(config1Field field, ValueType value, bool sendSPI = false)
 	{
 		return updateRegister(REG::MODEM_CONFIG1, field, value, sendSPI);
 	}

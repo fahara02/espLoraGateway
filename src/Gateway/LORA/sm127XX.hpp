@@ -18,6 +18,16 @@ enum class ChipModel
 	SX1261,
 	SX1262,
 };
+enum class MODE
+{
+	R, // Read
+	W, // Write
+	RW, // ReadWrite
+	SC, // Set toClear
+	T, // Trigger
+	RWT, // ReadWrite Trigger
+	ANY
+};
 enum class REG
 {
 	FIFO,
@@ -97,7 +107,7 @@ constexpr bool isRfmPlus(ChipModel m)
 	return m == ChipModel::RFM95;
 }
 
-enum class ChipSeries : uint8_t
+enum class Series : uint8_t
 {
 	None = 0,
 	RFM = 1 << 0,
@@ -106,35 +116,35 @@ enum class ChipSeries : uint8_t
 	SM76 = 1 << 3,
 };
 
-constexpr ChipSeries operator|(ChipSeries a, ChipSeries b)
+constexpr Series operator|(Series a, Series b)
 {
-	return static_cast<ChipSeries>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+	return static_cast<Series>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
 }
 
-constexpr bool hasFlag(ChipSeries series, ChipSeries flag)
+constexpr bool hasFlag(Series series, Series flag)
 {
 	return (static_cast<uint8_t>(series) & static_cast<uint8_t>(flag)) != 0;
 }
 
-constexpr ChipSeries getChipSeries(ChipModel model)
+constexpr Series getChipSeries(ChipModel model)
 {
 	switch(model)
 	{
 		case ChipModel::RFM95:
-			return ChipSeries::RFM;
+			return Series::RFM;
 		case ChipModel::SX1272:
 		case ChipModel::SX1273:
-			return ChipSeries::SM72;
+			return Series::SM72;
 		case ChipModel::SX1276:
 		case ChipModel::SX1277:
 		case ChipModel::SX1278:
 		case ChipModel::SX1279:
-			return ChipSeries::SM76;
+			return Series::SM76;
 		case ChipModel::SX1261:
 		case ChipModel::SX1262:
-			return ChipSeries::SM62;
+			return Series::SM62;
 		default:
-			return ChipSeries::None;
+			return Series::None;
 	}
 }
 
@@ -171,7 +181,7 @@ struct NoLowFreqMode
 {
 };
 
-enum class Field_OptMode : uint8_t
+enum class optField : uint8_t
 {
 	LongRangeMode,
 	AccessSharedReg,
@@ -235,7 +245,7 @@ struct SignalBandWidth
 		typename etl::conditional<is_sx1276_plus_v<Model>, SignalBandwidth_76, void>::type>::type;
 };
 
-enum class Field_ModemConfig1 : uint8_t
+enum class config1Field : uint8_t
 {
 	Bandwidth,
 	CodingRate,
@@ -258,8 +268,10 @@ struct SettingBase
 	struct FieldsConfig
 	{
 		FieldEnum fieldEnum;
-		ChipSeries series;
+		MODE mode;
+		Series series;
 		ConfigParams params;
+		uint8_t reset;
 	};
 
   public:
@@ -268,7 +280,7 @@ struct SettingBase
 	}
 };
 template<ChipModel Model>
-struct optModeSetting : public SettingBase<Field_OptMode>
+struct optModeSetting : public SettingBase<optField>
 {
 	LongRangeMode long_range;
 	AccessSharedReg shared_reg;
@@ -276,11 +288,10 @@ struct optModeSetting : public SettingBase<Field_OptMode>
 	typename etl::conditional<is_sx1276_plus_v<Model>, LowFreqMode, NoLowFreqMode>::type low_freq;
 	TransceiverModes transceiver;
 
-	using FieldsConfig = typename SettingBase<Field_OptMode>::FieldsConfig;
+	using FieldsConfig = typename SettingBase<optField>::FieldsConfig;
 	constexpr optModeSetting() :
-		SettingBase<Field_OptMode>(REG::OPMODE),
-		long_range(LongRangeMode::FSK_OOK), // Default value
-		shared_reg(AccessSharedReg::ACCESS_FSK), low_freq(LowFreqMode::HIGH_FREQUENCY_MODE),
+		SettingBase<optField>(REG::OPMODE), long_range(LongRangeMode::FSK_OOK), // Default value
+		shared_reg(AccessSharedReg::ACCESS_FSK), low_freq(LowFreqMode::LOW_FREQUENCY_MODE),
 		transceiver(TransceiverModes::STANDBY)
 	{
 	}
@@ -289,13 +300,13 @@ struct optModeSetting : public SettingBase<Field_OptMode>
 		LongRangeMode lr, AccessSharedReg sr,
 		typename etl::conditional<is_sx1276_plus_v<Model>, LowFreqMode, NoLowFreqMode>::type lf,
 		TransceiverModes tx) :
-		SettingBase<Field_OptMode>(REG::OPMODE),
+		SettingBase<optField>(REG::OPMODE),
 		long_range(lr), shared_reg(sr), low_freq(lf), transceiver(tx)
 	{
 	}
 };
 template<ChipModel Model>
-struct ModemConfig1Setting : public SettingBase<Field_ModemConfig1>
+struct ModemConfig1Setting : public SettingBase<config1Field>
 {
 	using BandwidthType = typename SignalBandWidth<Model>::Type;
 	BandwidthType bw;
@@ -306,10 +317,10 @@ struct ModemConfig1Setting : public SettingBase<Field_ModemConfig1>
 	etl::optional<CRCMode> mode;
 	etl::optional<LowDataRateOptimize> ldro;
 
-	using FieldsConfig = typename SettingBase<Field_ModemConfig1>::FieldsConfig;
+	using FieldsConfig = typename SettingBase<config1Field>::FieldsConfig;
 
 	constexpr ModemConfig1Setting() :
-		SettingBase<Field_ModemConfig1>(REG::MODEM_CONFIG1),
+		SettingBase<config1Field>(REG::MODEM_CONFIG1),
 		bw(static_cast<BandwidthType>(0)), // Default bandwidth
 		coding_rate(CodingRate::ERROR_CODING_4_5), header_mode(HeaderMode::IMPLICIT),
 		mode(etl::nullopt), ldro(etl::nullopt)
@@ -317,8 +328,8 @@ struct ModemConfig1Setting : public SettingBase<Field_ModemConfig1>
 	}
 
 	constexpr ModemConfig1Setting(BandwidthType bw_, CodingRate cr, HeaderMode hm) :
-		SettingBase<Field_ModemConfig1>(REG::MODEM_CONFIG1), bw(bw_), coding_rate(cr),
-		header_mode(hm), mode(etl::nullopt), ldro(etl::nullopt)
+		SettingBase<config1Field>(REG::MODEM_CONFIG1), bw(bw_), coding_rate(cr), header_mode(hm),
+		mode(etl::nullopt), ldro(etl::nullopt)
 	{
 	}
 
@@ -326,7 +337,7 @@ struct ModemConfig1Setting : public SettingBase<Field_ModemConfig1>
 	template<typename T = void, typename etl::enable_if_t<isSx1272Plus(Model), T>* = nullptr>
 	constexpr ModemConfig1Setting(BandwidthType bw_, CodingRate cr, HeaderMode hm, CRCMode m,
 								  LowDataRateOptimize ldr) :
-		SettingBase<Field_ModemConfig1>(REG::MODEM_CONFIG1),
+		SettingBase<config1Field>(REG::MODEM_CONFIG1),
 		bw(bw_), coding_rate(cr), header_mode(hm), mode(m), ldro(ldr)
 	{
 	}

@@ -17,29 +17,28 @@ void MockLoRaModem::testOptModeRegister()
 	// Test 1: Using LongRangeMode only.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
-		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 1
-		uint8_t result = reg.updateOptMode(Field_OptMode::LongRangeMode, LongRangeMode::LORA);
-		TEST_ASSERT_EQUAL_UINT8(0x81, result);
+		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 9
+		uint8_t result = reg.updateOptMode(optField::LongRangeMode, LongRangeMode::LORA);
+		TEST_ASSERT_EQUAL_UINT8(0x89, result);
 
 		// Calling with RX;
-		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::RX);
+		result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::RX);
 		TEST_ASSERT_EQUAL_UINT8(0x85, result);
-		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::SLEEP);
+		result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::SLEEP);
 		TEST_ASSERT_EQUAL_UINT8(0x80, result);
-		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::STANDBY);
+		result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::STANDBY);
 		TEST_ASSERT_EQUAL_UINT8(0x81, result);
-		result = reg.updateOptMode(Field_OptMode::TransceiverModes, TransceiverModes::FSRx);
+		result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::FSRx);
 		TEST_ASSERT_EQUAL_UINT8(0x84, result);
-		result = reg.updateOptMode(Field_OptMode::LongRangeMode, LongRangeMode::FSK_OOK);
+		result = reg.updateOptMode(optField::LongRangeMode, LongRangeMode::FSK_OOK);
 		TEST_ASSERT_EQUAL_UINT8(0x04, result);
 	}
 	// Test 2: Using Lowfrequency mode only.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
 
-		// Calling with LOW_FREQUENCY_MODE=1; i.e 1000 = 8 and default value is 1 so 1001=9
-		uint8_t result =
-			reg.updateOptMode(Field_OptMode::LowFreqMode, LowFreqMode::LOW_FREQUENCY_MODE);
+		// Calling with LOW_FREQUENCY_MODE=1; i.e 1001 = 9 and default value is 1 so 1001=9
+		uint8_t result = reg.updateOptMode(optField::LowFreqMode, LowFreqMode::LOW_FREQUENCY_MODE);
 
 		TEST_ASSERT_EQUAL_UINT8(0x09, result);
 	}
@@ -67,19 +66,19 @@ void MockLoRaModem::testOptModeModem()
 	// Test 1: Using LongRangeMode only.
 	{
 		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 1
-		uint8_t result = modem.setOptMode(Field_OptMode::LongRangeMode, LongRangeMode::LORA);
+		uint8_t result = modem.setOptMode(optField::LongRangeMode, LongRangeMode::LORA);
 		TEST_ASSERT_EQUAL_UINT8(0x81, result);
 
 		// Calling with RX;
-		result = modem.setOptMode(Field_OptMode::TransceiverModes, TransceiverModes::RX);
+		result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::RX);
 		TEST_ASSERT_EQUAL_UINT8(0x85, result);
-		result = modem.setOptMode(Field_OptMode::TransceiverModes, TransceiverModes::SLEEP);
+		result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::SLEEP);
 		TEST_ASSERT_EQUAL_UINT8(0x80, result);
-		result = modem.setOptMode(Field_OptMode::TransceiverModes, TransceiverModes::STANDBY);
+		result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::STANDBY);
 		TEST_ASSERT_EQUAL_UINT8(0x81, result);
-		result = modem.setOptMode(Field_OptMode::TransceiverModes, TransceiverModes::FSRx);
+		result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::FSRx);
 		TEST_ASSERT_EQUAL_UINT8(0x84, result);
-		result = modem.setOptMode(Field_OptMode::LongRangeMode, LongRangeMode::FSK_OOK);
+		result = modem.setOptMode(optField::LongRangeMode, LongRangeMode::FSK_OOK);
 		TEST_ASSERT_EQUAL_UINT8(0x04, result);
 	}
 
@@ -119,8 +118,7 @@ void MockLoRaModem::testBandwidth()
 	using BandwidthType = typename LoRa::LoRaModem<LoRa::ChipModel::SX1276>::Bandwidth;
 	BandwidthType bw = BandwidthType::BW_250_KHZ;
 
-	uint8_t result76 =
-		modem.setModemConfig1<BandwidthType>(Field_ModemConfig1::Bandwidth, bw, false);
+	uint8_t result76 = modem.setModemConfig1<BandwidthType>(config1Field::Bandwidth, bw, false);
 	uint8_t expected76 = static_cast<uint8_t>(SignalBandwidth_76::BW_250_KHZ) << 4;
 
 	TEST_ASSERT_EQUAL_UINT8(expected76, result76);

@@ -5,7 +5,7 @@ namespace LoRa
 template<ChipModel Model>
 void LoRaModem<Model>::setFrequency(uint32_t freq)
 {
-	setOptMode(Field_OptMode::TransceiverModes, TransceiverModes::STANDBY);
+	setOptMode(optField::TransceiverModes, TransceiverModes::STANDBY);
 
 	auto fMSB = registers_.getRegister(REG::FRF_MSB);
 	auto fMID = registers_.getRegister(REG::FRF_MID);
