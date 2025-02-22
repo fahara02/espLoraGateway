@@ -14,11 +14,14 @@ void MockLoRaModem::runAllTests()
 void MockLoRaModem::testOptModeRegister()
 {
 	LOG::TEST(TAG, "Testing optmode function");
+
 	// Test 1: Using LongRangeMode only.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
+		LOG::TEST(MODEM_TAG, "Before update: %02X", reg.getValue());
 		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 9
 		uint8_t result = reg.updateOptMode(optField::LongRangeMode, LongRangeMode::LORA);
+		LOG::TEST(MODEM_TAG, "After update: %02X", reg.getValue());
 		TEST_ASSERT_EQUAL_UINT8(0x89, result);
 
 		// Calling with RX;
@@ -31,6 +34,7 @@ void MockLoRaModem::testOptModeRegister()
 		result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::FSRx);
 		TEST_ASSERT_EQUAL_UINT8(0x84, result);
 		result = reg.updateOptMode(optField::LongRangeMode, LongRangeMode::FSK_OOK);
+
 		TEST_ASSERT_EQUAL_UINT8(0x04, result);
 	}
 	// Test 2: Using Lowfrequency mode only.

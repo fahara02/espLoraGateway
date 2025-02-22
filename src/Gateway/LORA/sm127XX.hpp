@@ -265,7 +265,7 @@ struct SettingBase
 {
 	REG settingFor;
 
-	struct FieldsConfig
+	struct configFields
 	{
 		FieldEnum fieldEnum;
 		MODE mode;
@@ -288,7 +288,7 @@ struct optModeSetting : public SettingBase<optField>
 	typename etl::conditional<is_sx1276_plus_v<Model>, LowFreqMode, NoLowFreqMode>::type low_freq;
 	TransceiverModes transceiver;
 
-	using FieldsConfig = typename SettingBase<optField>::FieldsConfig;
+	using configFields = typename SettingBase<optField>::configFields;
 	constexpr optModeSetting() :
 		SettingBase<optField>(REG::OPMODE), long_range(LongRangeMode::FSK_OOK), // Default value
 		shared_reg(AccessSharedReg::ACCESS_FSK), low_freq(LowFreqMode::LOW_FREQUENCY_MODE),
@@ -317,7 +317,7 @@ struct ModemConfig1Setting : public SettingBase<config1Field>
 	etl::optional<CRCMode> mode;
 	etl::optional<LowDataRateOptimize> ldro;
 
-	using FieldsConfig = typename SettingBase<config1Field>::FieldsConfig;
+	using configFields = typename SettingBase<config1Field>::configFields;
 
 	constexpr ModemConfig1Setting() :
 		SettingBase<config1Field>(REG::MODEM_CONFIG1),
@@ -342,6 +342,25 @@ struct ModemConfig1Setting : public SettingBase<config1Field>
 	{
 	}
 };
+template<REG reg>
+struct FieldTypeForReg;
+
+template<>
+struct FieldTypeForReg<REG::OPMODE>
+{
+	using Type = optField;
+};
+
+template<>
+struct FieldTypeForReg<REG::MODEM_CONFIG1>
+{
+	using Type = config1Field;
+};
+
+// Add more mappings as needed...
+
+template<REG reg>
+using FieldTypeForReg_t = typename FieldTypeForReg<reg>::Type;
 
 } // namespace LoRa
 #endif

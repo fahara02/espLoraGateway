@@ -17,8 +17,8 @@ struct RegInfo
 	uint8_t address;
 	MODE mode; // generalised Mode register level
 	uint8_t defaultValue;
-	const void* fieldConfigs;
-	size_t fieldConfigCount;
+	const void* configFields;
+	size_t configFieldCount;
 };
 
 struct Register
@@ -27,19 +27,22 @@ struct Register
 	const REG reg;
 	const MODE mode;
 	const uint8_t address;
+	const uint8_t resetValue = 0;
+	const Series series;
 
 	template<ChipModel Model>
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
-	using OptModeField = typename SettingBase<optField>::FieldsConfig;
-	using ModeConfig1Field = typename SettingBase<config1Field>::FieldsConfig;
+	using OptModeField = typename SettingBase<optField>::configFields;
+	using ModeConfig1Field = typename SettingBase<config1Field>::configFields;
 
 	constexpr Register() :
-		model(ChipModel::SX1276), reg(REG::FIFO), mode(MODE::RW), address(0), value_(0)
+		model(ChipModel::SX1276), reg(REG::FIFO), mode(MODE::RW), address(0),
+		series(getChipSeries(model)), resetValue(getDefaultValue(reg, model)), value_(resetValue)
 	{
 	}
 	constexpr Register(ChipModel m, REG r) :
 		model(m), reg(r), mode(getRegMode(r)), address(getRegAddress(r)),
-		value_(getDefaultValue(r, m))
+		series(getChipSeries(model)), resetValue(getDefaultValue(r, m)), value_(resetValue)
 	{
 	}
 	constexpr uint8_t getRegAddress(REG r)
@@ -47,11 +50,56 @@ struct Register
 		const RegInfo* info = lookupRegInfo(r);
 		return info ? info->address : 0xFF;
 	}
+
 	constexpr uint8_t getDefaultValue(REG r, ChipModel m)
 	{
 		const RegInfo* info = lookupRegInfo(r);
-		return info ? info->defaultValue : 0xFF;
+		if(!info)
+			return 0xFF;
+
+		// If configuration fields exist, compute default based on all fields
+		if(info->configFields)
+		{
+			uint8_t computedValue = 0;
+
+			switch(r)
+			{
+				case REG::OPMODE:
+				{
+					using FieldType = FieldTypeForReg_t<REG::OPMODE>;
+					using ConfigFields = SettingBase<FieldType>::configFields;
+					auto* fields = static_cast<const ConfigFields*>(info->configFields);
+					for(size_t i = 0; i < info->configFieldCount; ++i)
+					{
+						computedValue |=
+							((fields[i].reset & 0x1) << __builtin_ctz(fields[i].params.mask));
+					}
+					break;
+				}
+				case REG::MODEM_CONFIG1:
+				{
+					using FieldType = FieldTypeForReg_t<REG::MODEM_CONFIG1>;
+					using ConfigFields = SettingBase<FieldType>::configFields;
+
+					auto* fields = static_cast<const ConfigFields*>(info->configFields);
+					for(size_t i = 0; i < info->configFieldCount; ++i)
+					{
+						computedValue |=
+							((fields[i].reset & 0x1) << __builtin_ctz(fields[i].params.mask));
+					}
+
+					break;
+				}
+				default:
+					return info->defaultValue;
+			}
+
+			return computedValue;
+		}
+
+		return info->defaultValue;
 	}
+
 	constexpr MODE getRegMode(REG r)
 	{
 		const RegInfo* info = lookupRegInfo(r);
@@ -133,7 +181,7 @@ struct Register
 
 	void reset()
 	{
-		value_ = getDefaultValue(reg, model);
+		value_ = resetValue;
 	}
 	uint8_t getValue() const
 	{
@@ -181,7 +229,7 @@ struct Register
 
 	static constexpr etl::array<RegInfo, REG_COUNT> regTable = {
 		{{REG::FIFO, 0x00, MODE::RW, 0x00},
-		 {REG::OPMODE, 0x01, MODE::RW, 0x09, static_cast<const void*>(optModeFields.data()),
+		 {REG::OPMODE, 0x01, MODE::RW, 0x00, static_cast<const void*>(optModeFields.data()),
 		  optModeFields.size()},
 		 {REG::FRF_MSB, 0x06, MODE::RW, 0x6C},
 		 {REG::FRF_MID, 0x07, MODE::RW, 0x80},
@@ -242,13 +290,13 @@ struct Register
 	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, Series chipSeries)
 	{
 		const RegInfo* info = lookupRegInfo(r);
-		if(info && info->fieldConfigs)
+		if(info && info->configFields)
 		{
 			// Cast the void* to the correct type
-			using FieldConfig = SettingBase<FieldType>::FieldsConfig;
-			const FieldConfig* configs = static_cast<const FieldConfig*>(info->fieldConfigs);
+			using configField = SettingBase<FieldType>::configFields;
+			const configField* configs = static_cast<const configField*>(info->configFields);
 
-			for(size_t i = 0; i < info->fieldConfigCount; ++i)
+			for(size_t i = 0; i < info->configFieldCount; ++i)
 			{
 				if(configs[i].fieldEnum == field && configs[i].series == chipSeries)
 				{
