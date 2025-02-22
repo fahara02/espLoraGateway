@@ -110,10 +110,10 @@ constexpr bool isRfmPlus(ChipModel m)
 enum class Series : uint8_t
 {
 	None = 0,
-	RFM = 1 << 0,
-	SM62 = 1 << 1,
-	SM72 = 1 << 2,
-	SM76 = 1 << 3,
+	RFM,
+	SM62,
+	SM72,
+	SM76,
 };
 
 constexpr Series operator|(Series a, Series b)
@@ -124,28 +124,6 @@ constexpr Series operator|(Series a, Series b)
 constexpr bool hasFlag(Series series, Series flag)
 {
 	return (static_cast<uint8_t>(series) & static_cast<uint8_t>(flag)) != 0;
-}
-
-constexpr Series getChipSeries(ChipModel model)
-{
-	switch(model)
-	{
-		case ChipModel::RFM95:
-			return Series::RFM;
-		case ChipModel::SX1272:
-		case ChipModel::SX1273:
-			return Series::SM72;
-		case ChipModel::SX1276:
-		case ChipModel::SX1277:
-		case ChipModel::SX1278:
-		case ChipModel::SX1279:
-			return Series::SM76;
-		case ChipModel::SX1261:
-		case ChipModel::SX1262:
-			return Series::SM62;
-		default:
-			return Series::None;
-	}
 }
 
 enum class LongRangeMode : uint8_t

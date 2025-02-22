@@ -27,8 +27,8 @@ struct Register
 	const REG reg;
 	const MODE mode;
 	const uint8_t address;
-	const uint8_t resetValue = 0;
-	const Series series;
+	const Series chipSeries;
+	const uint8_t resetValue;
 
 	template<ChipModel Model>
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
@@ -37,73 +37,19 @@ struct Register
 
 	constexpr Register() :
 		model(ChipModel::SX1276), reg(REG::FIFO), mode(MODE::RW), address(0),
-		series(getChipSeries(model)), resetValue(getDefaultValue(reg, model)), value_(resetValue)
+		chipSeries(getChipSeries(model)), resetValue(getDefaultValue(reg, model)),
+		value_(resetValue)
 	{
 	}
 	constexpr Register(ChipModel m, REG r) :
 		model(m), reg(r), mode(getRegMode(r)), address(getRegAddress(r)),
-		series(getChipSeries(model)), resetValue(getDefaultValue(r, m)), value_(resetValue)
+		chipSeries(getChipSeries(model)), resetValue(getDefaultValue(r, m)), value_(resetValue)
 	{
 	}
 	constexpr uint8_t getRegAddress(REG r)
 	{
 		const RegInfo* info = lookupRegInfo(r);
 		return info ? info->address : 0xFF;
-	}
-
-	constexpr uint8_t getDefaultValue(REG r, ChipModel m)
-	{
-		const RegInfo* info = lookupRegInfo(r);
-		if(!info)
-			return 0xFF;
-
-		// If configuration fields exist, compute default based on all fields
-		if(info->configFields)
-		{
-			uint8_t computedValue = 0;
-
-			switch(r)
-			{
-				case REG::OPMODE:
-				{
-					using FieldType = FieldTypeForReg_t<REG::OPMODE>;
-					using ConfigFields = SettingBase<FieldType>::configFields;
-					auto* fields = static_cast<const ConfigFields*>(info->configFields);
-					for(size_t i = 0; i < info->configFieldCount; ++i)
-					{
-						computedValue |=
-							((fields[i].reset & 0x1) << __builtin_ctz(fields[i].params.mask));
-					}
-					break;
-				}
-				case REG::MODEM_CONFIG1:
-				{
-					using FieldType = FieldTypeForReg_t<REG::MODEM_CONFIG1>;
-					using ConfigFields = SettingBase<FieldType>::configFields;
-
-					auto* fields = static_cast<const ConfigFields*>(info->configFields);
-					for(size_t i = 0; i < info->configFieldCount; ++i)
-					{
-						computedValue |=
-							((fields[i].reset & 0x1) << __builtin_ctz(fields[i].params.mask));
-					}
-
-					break;
-				}
-				default:
-					return info->defaultValue;
-			}
-
-			return computedValue;
-		}
-
-		return info->defaultValue;
-	}
-
-	constexpr MODE getRegMode(REG r)
-	{
-		const RegInfo* info = lookupRegInfo(r);
-		return info ? info->mode : MODE::ANY;
 	}
 
 	template<typename Field>
@@ -117,6 +63,13 @@ struct Register
 		updateBits(params.mask, shifted_value);
 
 		return value_;
+	}
+	template<typename Field>
+	uint8_t getRegisterField(const Field field) const
+	{
+		ConfigParams params = getFieldConfigParams(reg, field, chipSeries);
+
+		return (getValue() & params.mask) >> params.shift;
 	}
 
 	template<typename ValueType>
@@ -196,17 +149,24 @@ struct Register
 	{
 		value_ = (value_ & ~mask) | (newValue & mask);
 	}
+	Series getSeries() const
+	{
+		return chipSeries;
+	}
 
   private:
 	uint8_t value_;
 
 	static constexpr etl::array<OptModeField, 7> optModeFields = {
+		// Long range Mode
 		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM72, {7, 0b10000000}, 0},
 		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM76, {7, 0b10000000}, 0},
+		// AccessSharedReg
 		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM72, {6, 0b01000000}, 0},
 		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM76, {6, 0b01000000}, 0},
-		// Only for SM76
+		// LowFreqMode Only for SM76
 		OptModeField{optField::LowFreqMode, MODE::RW, Series::SM76, {3, 0b00001000}, 0x1},
+		// TranscieverMode
 		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM72, {0, 0b00000111}, 0x1},
 		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM76, {0, 0b00000111}, 0x1},
 	};
@@ -274,7 +234,7 @@ struct Register
 		 {REG::DIO_MAPPING_2, 0x41, MODE::RW, 0x00},
 		 {REG::VERSION, 0x42, MODE::R, 0x00},
 		 {REG::PADAC, 0x4D, MODE::RW, 0x00}}};
-	constexpr const RegInfo* lookupRegInfo(REG r)
+	constexpr const RegInfo* lookupRegInfo(REG r) const
 	{
 		for(const auto& info: regTable)
 		{
@@ -287,7 +247,8 @@ struct Register
 	}
 
 	template<typename FieldType>
-	constexpr ConfigParams getFieldConfigParams(REG r, FieldType field, Series chipSeries)
+	constexpr ConfigParams getFieldConfigParams(const REG r, const FieldType field,
+												const Series chipSeries) const
 	{
 		const RegInfo* info = lookupRegInfo(r);
 		if(info && info->configFields)
@@ -306,6 +267,95 @@ struct Register
 		}
 		// Return a default value if no match is found
 		return {0, 0};
+	}
+	constexpr uint8_t getDefaultValue(REG r, ChipModel m)
+	{
+		const RegInfo* info = lookupRegInfo(r);
+		if(!info)
+			return 0xFF;
+		if(!info->configFields)
+		{
+			// printf("[ERROR] No config fields for reg %d\n", static_cast<int>(r));
+			return info->defaultValue;
+		}
+
+		// If configuration fields exist, compute default based on all fields
+		if(info->configFields)
+		{
+			uint8_t computedValue = 0;
+
+			switch(r)
+			{
+				case REG::OPMODE:
+				{
+					using FieldType = FieldTypeForReg_t<REG::OPMODE>;
+					using ConfigFields = SettingBase<FieldType>::configFields;
+					auto* fields = static_cast<const ConfigFields*>(info->configFields);
+					for(size_t i = 0; i < info->configFieldCount; ++i)
+					{
+						if(fields[i].series == chipSeries) // Match correct Series
+						{
+							computedValue |=
+								((fields[i].reset) << __builtin_ctz(fields[i].params.mask));
+						}
+					}
+					break;
+				}
+				case REG::MODEM_CONFIG1:
+				{
+					using FieldType = FieldTypeForReg_t<REG::MODEM_CONFIG1>;
+					using ConfigFields = SettingBase<FieldType>::configFields;
+					auto* fields = static_cast<const ConfigFields*>(info->configFields);
+					for(size_t i = 0; i < info->configFieldCount; ++i)
+					{
+						if(fields[i].series == chipSeries) // Match correct Series
+						{
+							computedValue |=
+								((fields[i].reset) << __builtin_ctz(fields[i].params.mask));
+						}
+					}
+					break;
+				}
+				default:
+					return info->defaultValue;
+			}
+
+			return computedValue;
+		}
+
+		return info->defaultValue;
+	}
+
+	constexpr MODE getRegMode(REG r)
+	{
+		const RegInfo* info = lookupRegInfo(r);
+		return info ? info->mode : MODE::ANY;
+	}
+	constexpr Series getChipSeries(ChipModel model)
+	{
+		switch(model)
+		{
+			case ChipModel::RFM95:
+				return Series::RFM;
+			case ChipModel::SX1272:
+				return Series::SM72;
+			case ChipModel::SX1273:
+				return Series::SM72;
+			case ChipModel::SX1276:
+				return Series::SM76;
+			case ChipModel::SX1277:
+				return Series::SM76;
+			case ChipModel::SX1278:
+				return Series::SM76;
+			case ChipModel::SX1279:
+				return Series::SM76;
+			case ChipModel::SX1261:
+				return Series::SM62;
+			case ChipModel::SX1262:
+				return Series::SM62;
+			default:
+				return Series::None;
+		}
 	}
 };
 template<ChipModel Model>

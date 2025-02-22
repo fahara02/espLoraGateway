@@ -47,10 +47,37 @@ class LoRaModem
 	int loraWait(struct LoraDown* LoraDown);
 
 	template<typename ValueType>
-	uint8_t setOptMode(optField field, ValueType value, bool sendSPI = false)
+	uint8_t setOptMode(const optField field, const ValueType new_value, bool sendSPI = false)
 	{
-		return updateRegister(REG::OPMODE, field, value, sendSPI);
+		if(field == optField::LongRangeMode)
+		{
+			// Ensure we have a valid software register reference
+			auto reg = registers_.getRegister(REG::OPMODE);
+			if(!reg)
+			{
+				LOG::ERROR(MODEM_TAG, "OPMODE register not found in software registers.");
+				return 0;
+			}
+
+			uint8_t transceiverMode = reg->getRegisterField(optField::TransceiverModes);
+			if(transceiverMode != static_cast<uint8_t>(TransceiverModes::SLEEP))
+			{
+				LOG::ERROR(MODEM_TAG,
+						   "Cannot change LongRangeMode: TransceiverMode is not in SLEEP (Current: "
+						   "0x%02X)",
+						   transceiverMode);
+				return 0;
+			}
+		}
+
+		return updateRegister(REG::OPMODE, field, new_value, sendSPI);
 	}
+
+	// template<typename ValueType>
+	// uint8_t setOptMode(optField field, ValueType value, bool sendSPI = false)
+	// {
+	// 	return updateRegister(REG::OPMODE, field, value, sendSPI);
+	// }
 
 	template<typename ValueType>
 	uint8_t setModemConfig1(config1Field field, ValueType value, bool sendSPI = false)

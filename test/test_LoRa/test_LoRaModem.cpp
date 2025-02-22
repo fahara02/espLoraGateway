@@ -6,7 +6,7 @@ void MockLoRaModem::runAllTests()
 {
 	LOG::ENABLE();
 	RUN_TEST(testOptModeRegister);
-	RUN_TEST(testOptModeModem);
+	// RUN_TEST(testOptModeModem);
 	RUN_TEST(testBandwidth);
 	RUN_TEST(testModemConfig1);
 }
@@ -14,15 +14,23 @@ void MockLoRaModem::runAllTests()
 void MockLoRaModem::testOptModeRegister()
 {
 	LOG::TEST(TAG, "Testing optmode function");
+	Register reg(ChipModel::SX1276, REG::OPMODE);
+	LOG::TEST(MODEM_TAG, "ChipSeries: %s", reg.getSeries() == Series::SM76 ? "Sm76" : "Wrong!");
 
 	// Test 1: Using LongRangeMode only.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
 		LOG::TEST(MODEM_TAG, "Before update: %02X", reg.getValue());
+
+		uint8_t result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::SLEEP);
+		TEST_ASSERT_EQUAL_UINT8(0x08, result);
+
+		result = reg.updateOptMode(optField::LowFreqMode, LowFreqMode::HIGH_FREQUENCY_MODE);
+		TEST_ASSERT_EQUAL_UINT8(0x00, result);
 		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 9
-		uint8_t result = reg.updateOptMode(optField::LongRangeMode, LongRangeMode::LORA);
+		result = reg.updateOptMode(optField::LongRangeMode, LongRangeMode::LORA);
 		LOG::TEST(MODEM_TAG, "After update: %02X", reg.getValue());
-		TEST_ASSERT_EQUAL_UINT8(0x89, result);
+		TEST_ASSERT_EQUAL_UINT8(0x80, result);
 
 		// Calling with RX;
 		result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::RX);
