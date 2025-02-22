@@ -20,5 +20,6 @@ class MockLoRaModem : public LoRaModem<ChipModel::SX1276>
   private:
 	static void testOptMode();
 	static void testBandwidth();
+	static void testModemConfig1();
 };
 #endif

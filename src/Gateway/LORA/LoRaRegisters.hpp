@@ -21,54 +21,6 @@ enum class REG_MODE
 	ANY
 };
 
-enum class REG
-{
-	FIFO,
-	OPMODE,
-	FRF_MSB,
-	FRF_MID,
-	FRF_LSB,
-	PAC,
-	PARAMP,
-	OCP,
-	LNA,
-	FIFO_ADDR_PTR,
-	FIFO_TX_BASE_AD,
-	FIFO_RX_BASE_AD,
-	FIFO_RX_CURRENT_ADDR,
-	IRQ_FLAGS_MASK,
-	IRQ_FLAGS,
-	RX_BYTES_NB,
-	PKT_SNR_VALUE,
-	PKT_RSSI,
-	HOP_CHANNEL,
-	MODEM_CONFIG1,
-	MODEM_CONFIG2,
-	SYMB_TIMEOUT_LSB,
-	PREAMBLE_MSB,
-	PREAMBLE_LSB,
-	PAYLOAD_LENGTH,
-	MAX_PAYLOAD_LENGTH,
-	HOP_PERIOD,
-	FIFO_RX_BYTE_ADDR_PTR,
-	MODEM_CONFIG3,
-	PPM_CORRECTION,
-	FREQ_ERROR_MSB,
-	FREQ_ERROR_MID,
-	FREQ_ERROR_LSB,
-	RSSI_WIDEBAND,
-	DETECT_OPTIMIZE,
-	INVERTIQ,
-	DET_TRESH,
-	SYNC_WORD,
-	INVERTIQ2,
-	TEMP,
-	DIO_MAPPING_1,
-	DIO_MAPPING_2,
-	VERSION,
-	PADAC
-};
-
 struct RegInfo
 {
 	REG reg;
@@ -79,36 +31,6 @@ struct RegInfo
 	size_t fieldConfigCount;
 };
 
-constexpr OptModeFieldConfig OptModeFieldConfigs[] = {
-	// LongRangeMode:
-	{Field_OptMode::LongRangeMode, ChipSeries::SM72, {7, 0b10000000}},
-	{Field_OptMode::LongRangeMode, ChipSeries::SM76, {7, 0b10000000}},
-	// AccessShared Reg:
-	{Field_OptMode::AccessSharedReg, ChipSeries::SM72, {6, 0b01000000}},
-	{Field_OptMode::AccessSharedReg, ChipSeries::SM76, {6, 0b01000000}},
-	// LowFreqMode (only defined for Sm76 series):
-	{Field_OptMode::LowFreqMode, ChipSeries::SM76, {3, 0b00001000}},
-	// TransceiverModes
-	{Field_OptMode::TransceiverModes, ChipSeries::SM72, {0, 0b00000111}},
-	{Field_OptMode::TransceiverModes, ChipSeries::SM76, {0, 0b00000111}},
-
-};
-
-constexpr ModemConfig1FieldConfig modemConfig1FieldConfigs[] = {
-	// Bandwidth:
-	{Field_ModemConfig1::Bandwidth, ChipSeries::SM72, {6, 0b11000000}},
-	{Field_ModemConfig1::Bandwidth, ChipSeries::SM76, {4, 0b11110000}},
-	// Coding Rate:
-	{Field_ModemConfig1::CodingRate, ChipSeries::SM72, {3, 0b00111000}},
-	{Field_ModemConfig1::CodingRate, ChipSeries::SM76, {1, 0b00001110}},
-	// HeaderMode
-	{Field_ModemConfig1::HeaderMode, ChipSeries::SM72, {2, 0b00000100}},
-	{Field_ModemConfig1::HeaderMode, ChipSeries::SM76, {0, 0b00000001}},
-	// CRC (only defined for Sm72 series):
-	{Field_ModemConfig1::CRC, ChipSeries::SM72, {1, 0b00000010}},
-	// Low Data Optimization (only defined for Sm72 series):
-	{Field_ModemConfig1::LowDataOptimization, ChipSeries::SM72, {0, 0b00000001}}};
-
 struct Register
 {
 	const ChipModel model;
@@ -118,6 +40,8 @@ struct Register
 
 	template<ChipModel Model>
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
+	using OptModeFieldMap = typename SettingBase<Field_OptMode>::FieldsConfig;
+	using ModeConfig1FieldsMap = typename SettingBase<Field_ModemConfig1>::FieldsConfig;
 
 	constexpr Register() :
 		model(ChipModel::SX1276), reg(REG::FIFO), mode(REG_MODE::READ_WRITE), address(0), value_(0)
@@ -172,31 +96,9 @@ struct Register
 			field, static_cast<uint8_t>(new_value));
 	}
 
-	template<REG T>
-	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type setOptMode(const LongRangeMode mode)
-	{
-		value_ = (value_ & ~(1 << 7)) | ((static_cast<uint8_t>(mode) & 0b1) << 7);
-		return value_;
-	}
-
-	template<REG T, ChipModel Model>
-	typename etl::enable_if<(T == REG::OPMODE && is_sx1276_plus_v<Model>), uint8_t>::type
-		setOptMode(const LowFreqMode mode)
-	{
-		return value_ = (value_ & ~(1 << 3)) | (static_cast<uint8_t>(mode) & 0b1) << 3;
-	}
-
-	template<REG T>
-	typename etl::enable_if<(T == REG::OPMODE), uint8_t>::type
-		setOptMode(const TransceiverModes mode)
-	{
-		value_ = (value_ & ~0b111) | (static_cast<uint8_t>(mode) & 0b111);
-		return value_;
-	}
-
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::OPMODE, uint8_t>::type
-		setOptMode(const Setting_OptMode<Model>& optmode)
+		setOptMode(const optModeSetting<Model>& optmode)
 	{
 		value_ = (value_ & ~((1 << 7) | (1 << 6) | (1 << 3) | 0b111));
 
@@ -215,7 +117,7 @@ struct Register
 
 	template<REG T, ChipModel Model>
 	typename etl::enable_if<T == REG::MODEM_CONFIG1, uint8_t>::type
-		configureModem(const Setting_ModemConfig1<Model>& config)
+		setModemConfig1(const ModemConfig1Setting<Model>& config)
 	{
 		// Clear only the bits being modified while preserving others
 		if constexpr(is_sx1276_plus_v<Model>)
@@ -253,23 +155,46 @@ struct Register
 	{
 		value_ = v;
 	}
-	void setField(uint8_t mask, uint8_t newValue)
-	{
-	}
+
 	void updateBits(uint8_t mask, uint8_t newValue)
 	{
 		value_ = (value_ & ~mask) | (newValue & mask);
 	}
 
-	// Common helper that performs the shared functionality.
-
   private:
 	uint8_t value_;
 
+	static constexpr etl::array<OptModeFieldMap, 7> optModeFields = {
+		OptModeFieldMap{Field_OptMode::LongRangeMode, ChipSeries::SM72, {7, 0b10000000}},
+		OptModeFieldMap{Field_OptMode::LongRangeMode, ChipSeries::SM76, {7, 0b10000000}},
+		OptModeFieldMap{Field_OptMode::AccessSharedReg, ChipSeries::SM72, {6, 0b01000000}},
+		OptModeFieldMap{Field_OptMode::AccessSharedReg, ChipSeries::SM76, {6, 0b01000000}},
+		OptModeFieldMap{
+			Field_OptMode::LowFreqMode, ChipSeries::SM76, {3, 0b00001000}}, // Only for SM76
+		OptModeFieldMap{Field_OptMode::TransceiverModes, ChipSeries::SM72, {0, 0b00000111}},
+		OptModeFieldMap{Field_OptMode::TransceiverModes, ChipSeries::SM76, {0, 0b00000111}},
+	};
+
+	static constexpr etl::array<ModeConfig1FieldsMap, 8> modemConfig1Fields = {
+		// Bandwidth:
+		ModeConfig1FieldsMap{Field_ModemConfig1::Bandwidth, ChipSeries::SM72, {6, 0b11000000}},
+		ModeConfig1FieldsMap{Field_ModemConfig1::Bandwidth, ChipSeries::SM76, {4, 0b11110000}},
+		// Coding Rate:
+		ModeConfig1FieldsMap{Field_ModemConfig1::CodingRate, ChipSeries::SM72, {3, 0b00111000}},
+		{Field_ModemConfig1::CodingRate, ChipSeries::SM76, {1, 0b00001110}},
+		// HeaderMode
+		ModeConfig1FieldsMap{Field_ModemConfig1::HeaderMode, ChipSeries::SM72, {2, 0b00000100}},
+		ModeConfig1FieldsMap{Field_ModemConfig1::HeaderMode, ChipSeries::SM76, {0, 0b00000001}},
+		// CRC (only defined for Sm72 series):
+		ModeConfig1FieldsMap{Field_ModemConfig1::CRC, ChipSeries::SM72, {1, 0b00000010}},
+		// Low Data Optimization (only defined for Sm72 series):
+		ModeConfig1FieldsMap{
+			Field_ModemConfig1::LowDataOptimization, ChipSeries::SM72, {0, 0b00000001}}};
+
 	static constexpr etl::array<RegInfo, REG_COUNT> regTable{
 		{{REG::FIFO, 0x00, REG_MODE::READ_WRITE, 0x00},
-		 {REG::OPMODE, 0x01, REG_MODE::READ_WRITE, 0x01, OptModeFieldConfigs,
-		  sizeof(OptModeFieldConfigs) / sizeof(OptModeFieldConfigs[0])},
+		 {REG::OPMODE, 0x01, REG_MODE::READ_WRITE, 0x01,
+		  static_cast<const void*>(optModeFields.data()), optModeFields.size()},
 		 {REG::FRF_MSB, 0x06, REG_MODE::READ_WRITE, 0x6C},
 		 {REG::FRF_MID, 0x07, REG_MODE::READ_WRITE, 0x80},
 		 {REG::FRF_LSB, 0x08, REG_MODE::READ_WRITE, 0x00},
@@ -287,8 +212,8 @@ struct Register
 		 {REG::PKT_SNR_VALUE, 0x19, REG_MODE::READ_ONLY, 0x00},
 		 {REG::PKT_RSSI, 0x1A, REG_MODE::READ_ONLY, 0x00},
 		 {REG::HOP_CHANNEL, 0x1C, REG_MODE::READ_ONLY, 0x00},
-		 {REG::MODEM_CONFIG1, 0x1D, REG_MODE::READ_WRITE, 0x00, modemConfig1FieldConfigs,
-		  sizeof(modemConfig1FieldConfigs) / sizeof(modemConfig1FieldConfigs[0])},
+		 {REG::MODEM_CONFIG1, 0x1D, REG_MODE::READ_WRITE, 0x00,
+		  static_cast<const void*>(modemConfig1Fields.data()), modemConfig1Fields.size()},
 		 {REG::MODEM_CONFIG2, 0x1E, REG_MODE::READ_WRITE, 0x00},
 		 {REG::SYMB_TIMEOUT_LSB, 0x1F, REG_MODE::READ_WRITE, 0x00},
 		 {REG::PREAMBLE_MSB, 0x20, REG_MODE::READ_WRITE, 0x00},
@@ -332,12 +257,12 @@ struct Register
 		if(info && info->fieldConfigs)
 		{
 			// Cast the void* to the correct type
-			const FieldConfig<FieldType>* configs =
-				static_cast<const FieldConfig<FieldType>*>(info->fieldConfigs);
+			using FieldConfig = SettingBase<FieldType>::FieldsConfig;
+			const FieldConfig* configs = static_cast<const FieldConfig*>(info->fieldConfigs);
 
 			for(size_t i = 0; i < info->fieldConfigCount; ++i)
 			{
-				if(configs[i].field == field && configs[i].chip_series == chipSeries)
+				if(configs[i].fieldEnum == field && configs[i].series == chipSeries)
 				{
 					return configs[i].params;
 				}

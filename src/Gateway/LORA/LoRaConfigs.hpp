@@ -24,6 +24,7 @@ static constexpr uint16_t BUFFER_BYTES = 2;
 static constexpr bool Monitor = true;
 
 static constexpr uint16_t REG_COUNT = 44;
+static constexpr uint16_t MAX_FIELD = 5;
 
 } // namespace LoRa
 #endif

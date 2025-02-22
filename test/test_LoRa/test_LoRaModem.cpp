@@ -7,6 +7,7 @@ void MockLoRaModem::runAllTests()
 	LOG::ENABLE();
 	RUN_TEST(testOptMode);
 	RUN_TEST(testBandwidth);
+	RUN_TEST(testModemConfig1);
 }
 
 void MockLoRaModem::testOptMode()
@@ -44,7 +45,7 @@ void MockLoRaModem::testOptMode()
 	// Test 4: Using the ConfigureOptMode structure.
 	{
 		Register reg(ChipModel::SX1276, REG::OPMODE);
-		Setting_OptMode<Model::SX1276> config = {
+		optModeSetting<Model::SX1276> config = {
 			LongRangeMode::LORA, // LORA → (1 << 7) = 128
 			AccessSharedReg::ACCESS_FSK, // ACCESS_FSK → (1 << 6) = 64
 			LowFreqMode::HIGH_FREQUENCY_MODE,
@@ -69,4 +70,22 @@ void MockLoRaModem::testBandwidth()
 	uint8_t expected76 = static_cast<uint8_t>(SignalBandwidth_76::BW_250_KHZ) << 4;
 
 	TEST_ASSERT_EQUAL_UINT8(expected76, result76);
+}
+
+void MockLoRaModem::testModemConfig1()
+{
+	LOG::TEST(TAG, "Testing ModmeConfig1 function");
+	MockLoRaModem modem;
+	{
+		Register reg(ChipModel::SX1276, REG::MODEM_CONFIG1);
+		ModemConfig1Setting<Model::SX1276> config = {
+			Bandwidth::BW_7_8_KHZ, // BandWidth→ (0 << 4) = 0
+			CodingRate::ERROR_CODING_4_5, // Coding Rate → (1 << 1) = 1
+			HeaderMode::EXPLICIT // header->(1<<0)
+
+		};
+		uint8_t result = reg.setModemConfig1<REG::MODEM_CONFIG1>(config);
+		// Expected: 00000010 = 2
+		TEST_ASSERT_EQUAL_UINT8(2, result);
+	}
 }
