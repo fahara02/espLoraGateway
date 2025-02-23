@@ -4,6 +4,7 @@
 #include "sm127XX.hpp"
 #include "etl/array.h"
 #include "etl/optional.h"
+#include "Lock.hpp"
 
 #include "Logger.hpp"
 #define LORA_REG "LORA_REGISTER"
@@ -57,6 +58,7 @@ struct Register
 	const MODE mode;
 	const uint8_t address;
 	const uint8_t resetValue;
+	SemaphoreHandle_t mutex;
 
 	template<ChipModel Model>
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
@@ -87,9 +89,10 @@ struct Register
 	}
 	template<typename Field>
 	uint8_t getRegisterField(const Field field) const
-	{
-		ConfigParams params = getFieldConfigParams(reg, field, chipSeries);
-
+	{   
+		
+		ConfigParams params = getFieldConfigParams(reg, field, chipSeries);		
+		LOG::TEST(LORA_REG,"Register  Value after getting config param: 0x%02X", getValue());
 		return (getValue() & params.mask) >> params.shift;
 	}
 	template<typename Field>

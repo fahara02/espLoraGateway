@@ -8,6 +8,7 @@
 	#include "SPIBus.hpp"
 	#include "LoRaRegisters.hpp"
 	#include "Logger.hpp"
+	#include"Lock.hpp"
 	#define MODEM_TAG "LORA-MODEM"
 namespace LoRa
 {
@@ -26,17 +27,13 @@ class LoRaModem
 		frequencyPlan_((frequencytable_ && bandIndex < LORA_MAX_CHANNEL) ?
 						   (*frequencytable_)[bandIndex] :
 						   FrequencyPlan{}),
-		pins_(LoRaBoard::getPinConfig(model_)), registers_(LoRaRegisters<Model>::getInstance())
+		pins_(LoRaBoard::getPinConfig(model_)), registers_(LoRaRegisters<Model>::getInstance()),mutex_(xSemaphoreCreateMutex())
 	{
 		init();
 	}
 
 	void startReceiver();
 
-	// uint8_t setBandWidth(Bandwidth& bw, bool sendSPI)
-	// {
-	// 	return updateModemConfig1(static_cast<uint8_t>(bw), Field_ModemConfig1::Bandwidth, sendSPI);
-	// }
 
 	void setFrequency(uint32_t freq);
 	void setPow(uint8_t pow);
@@ -48,17 +45,27 @@ class LoRaModem
 
 	template<typename ValueType>
 	uint8_t setOptMode(const optField field, const ValueType new_value, bool sendSPI = false)
-	{
+
+	{   
+		
 		if(field == optField::LongRangeMode)
-		{
+		{   
+			
+			  
 			// Ensure we have a valid software register reference
 			auto reg = registers_.getRegister(REG::OPMODE);
+			LOG::TEST(MODEM_TAG,"Setting of LongRangeMode when reg value is: 0x%02X", reg->getValue());
 			if(!reg)
 			{
 				LOG::ERROR(MODEM_TAG, "OPMODE register not found in software registers.");
 				return 0;
 			}
-
+            Core::Lock lock(mutex_, portMAX_DELAY);
+			if (!lock.acquired())
+			 {
+			 LOG::ERROR(MODEM_TAG, "Failed to acquire lock for register update");
+			 return 0;
+			 }
 			uint8_t transceiverMode = reg->getRegisterField(optField::TransceiverModes);
 			if(transceiverMode != static_cast<uint8_t>(TransceiverModes::SLEEP))
 			{
@@ -73,11 +80,6 @@ class LoRaModem
 		return updateRegister(REG::OPMODE, field, new_value, sendSPI);
 	}
 
-	// template<typename ValueType>
-	// uint8_t setOptMode(optField field, ValueType value, bool sendSPI = false)
-	// {
-	// 	return updateRegister(REG::OPMODE, field, value, sendSPI);
-	// }
 
 	template<typename ValueType>
 	uint8_t setModemConfig1(config1Field field, ValueType value, bool sendSPI = false)
@@ -103,6 +105,8 @@ class LoRaModem
 	const FrequencyPlan frequencyPlan_;
 	LoRaPins pins_;
 	LoRaRegisters<Model>& registers_;
+	
+	SemaphoreHandle_t mutex_;
 
 	volatile ReceiverState rxState_ = ReceiverState::S_INIT;
 	volatile uint8_t event_ = 0;
@@ -184,11 +188,18 @@ class LoRaModem
 
 	template<typename RegisterField, typename ValueType>
 	uint8_t updateRegister(REG regType, RegisterField field, ValueType value, bool sendSPI)
-	{
+	{   
+        Core::Lock lock(mutex_, portMAX_DELAY);
+	   if (!lock.acquired())
+	    {
+		LOG::ERROR(MODEM_TAG, "Failed to acquire lock for register update");
+		return 0;
+	    }
+		 
 		auto reg = registers_.getRegister(regType);
 		if(!reg)
 			return 0; // Handle case where register is not found
-
+		LOG::TEST(MODEM_TAG,"Updating Register  when reg value is: 0x%02X", reg->getValue());
 		reg->template updateRegisterField(field, static_cast<uint8_t>(value));
 
 		uint8_t updatedValue = reg->getValue(); // Retrieve the modified register value
