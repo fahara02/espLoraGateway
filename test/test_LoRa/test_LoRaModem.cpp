@@ -14,12 +14,12 @@ void MockLoRaModem::runAllTests()
 void MockLoRaModem::testOptModeRegister()
 {
 	LOG::TEST(TAG, "Testing optmode function");
-	Register reg(ChipModel::SX1276, REG::OPMODE);
+	Register reg(ChipModel::SX1276, REG::OPMODE, 0x09);
 	LOG::TEST(MODEM_TAG, "ChipSeries: %s", reg.getSeries() == Series::SM76 ? "Sm76" : "Wrong!");
 
 	// Test 1: Using LongRangeMode only.
 	{
-		Register reg(ChipModel::SX1276, REG::OPMODE);
+		Register reg(ChipModel::SX1276, REG::OPMODE, 0x09);
 		LOG::TEST(MODEM_TAG, "Before update: %02X", reg.getValue());
 
 		uint8_t result = reg.updateOptMode(optField::TransceiverModes, TransceiverModes::SLEEP);
@@ -47,7 +47,7 @@ void MockLoRaModem::testOptModeRegister()
 	}
 	// Test 2: Using Lowfrequency mode only.
 	{
-		Register reg(ChipModel::SX1276, REG::OPMODE);
+		Register reg(ChipModel::SX1276, REG::OPMODE, 0x09);
 
 		// Calling with LOW_FREQUENCY_MODE=1; i.e 1001 = 9 and default value is 1 so 1001=9
 		uint8_t result = reg.updateOptMode(optField::LowFreqMode, LowFreqMode::LOW_FREQUENCY_MODE);
@@ -56,7 +56,7 @@ void MockLoRaModem::testOptModeRegister()
 	}
 	// Test 4: Using the ConfigureOptMode structure.
 	{
-		Register reg(ChipModel::SX1276, REG::OPMODE);
+		Register reg(ChipModel::SX1276, REG::OPMODE, 0x09);
 		optModeSetting<Model::SX1276> config = {
 			LongRangeMode::LORA, // LORA → (1 << 7) = 128
 			AccessSharedReg::ACCESS_FSK, // ACCESS_FSK → (1 << 6) = 64
@@ -141,7 +141,7 @@ void MockLoRaModem::testModemConfig1()
 	LOG::TEST(TAG, "Testing ModmeConfig1 function");
 	MockLoRaModem modem;
 	{
-		Register reg(ChipModel::SX1276, REG::MODEM_CONFIG1);
+		Register reg(ChipModel::SX1276, REG::MODEM_CONFIG1, 0x00);
 		ModemConfig1Setting<Model::SX1276> config = {
 			Bandwidth::BW_7_8_KHZ, // BandWidth→ (0 << 4) = 0
 			CodingRate::ERROR_CODING_4_5, // Coding Rate → (1 << 1) = 1

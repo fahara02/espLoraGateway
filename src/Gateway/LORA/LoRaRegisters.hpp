@@ -21,48 +21,69 @@ struct RegInfo
 	size_t configFieldCount;
 };
 
+// Centralized Configurations Class
+class ConfigFields
+{
+  public:
+	using OptModeField = typename SettingBase<optField>::configFields;
+	using ModeConfig1Field = typename SettingBase<config1Field>::configFields;
+
+	static constexpr etl::array<OptModeField, 7> optModeFields = {
+		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM72, {7, 0b10000000}, 0},
+		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM76, {7, 0b10000000}, 0},
+		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM72, {6, 0b01000000}, 0},
+		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM76, {6, 0b01000000}, 0},
+		OptModeField{optField::LowFreqMode, MODE::RW, Series::SM76, {3, 0b00001000}, 0x1},
+		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM72, {0, 0b00000111}, 0x1},
+		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM76, {0, 0b00000111}, 0x1}};
+
+	static constexpr etl::array<ModeConfig1Field, 8> modemConfig1Fields = {
+		ModeConfig1Field{config1Field::Bandwidth, MODE::RW, Series::SM72, {6, 0b11000000}, 0x0},
+		ModeConfig1Field{config1Field::Bandwidth, MODE::RW, Series::SM76, {4, 0b11110000}, 0x0},
+		ModeConfig1Field{config1Field::CodingRate, MODE::RW, Series::SM72, {3, 0b00111000}, 0x0},
+		ModeConfig1Field{config1Field::CodingRate, MODE::RW, Series::SM76, {1, 0b00001110}, 0x0},
+		ModeConfig1Field{config1Field::HeaderMode, MODE::RW, Series::SM72, {2, 0b00000100}, 0x0},
+		ModeConfig1Field{config1Field::HeaderMode, MODE::RW, Series::SM76, {0, 0b00000001}, 0x0},
+		ModeConfig1Field{config1Field::CRC, MODE::RW, Series::SM72, {1, 0b00000010}, 0x0},
+		ModeConfig1Field{
+			config1Field::LowDataOptimization, MODE::RW, Series::SM72, {0, 0b00000001}, 0x0}};
+};
+
 struct Register
 {
 	const ChipModel model;
+	const Series chipSeries;
 	const REG reg;
 	const MODE mode;
 	const uint8_t address;
-	const Series chipSeries;
 	const uint8_t resetValue;
 
 	template<ChipModel Model>
 	using Bandwidth = typename SignalBandWidth<Model>::Type;
-	using OptModeField = typename SettingBase<optField>::configFields;
-	using ModeConfig1Field = typename SettingBase<config1Field>::configFields;
 
 	constexpr Register() :
-		model(ChipModel::SX1276), reg(REG::FIFO), mode(MODE::RW), address(0),
-		chipSeries(getChipSeries(model)), resetValue(getDefaultValue(reg, model)),
-		value_(resetValue)
+		model(ChipModel::SX1276), chipSeries(getChipSeries(model)), reg(REG::FIFO), mode(MODE::RW),
+		address(0), resetValue(0), value_(resetValue)
 	{
 	}
-	constexpr Register(ChipModel m, REG r) :
-		model(m), reg(r), mode(getRegMode(r)), address(getRegAddress(r)),
-		chipSeries(getChipSeries(model)), resetValue(getDefaultValue(r, m)), value_(resetValue)
+	constexpr Register(ChipModel m, REG r, uint8_t defaultValue) :
+		model(m), chipSeries(getChipSeries(model)), reg(r), mode(getRegMode(r)),
+		address(getRegAddress(r)), resetValue(defaultValue), value_(resetValue)
 	{
 	}
+
+	template<ChipModel M, REG r>
+	static constexpr Register createRegister()
+	{
+		uint8_t defaultValue = getDefaultValue<r, M>();
+
+		return Register(M, r, defaultValue);
+	}
+
 	constexpr uint8_t getRegAddress(REG r)
 	{
 		const RegInfo* info = lookupRegInfo(r);
 		return info ? info->address : 0xFF;
-	}
-
-	template<typename Field>
-	uint8_t updateRegisterField(const Field field, uint8_t new_value)
-	{
-		const Series series = isSx1272Plus(model) ? Series::SM72 : Series::SM76;
-
-		ConfigParams params = getFieldConfigParams(reg, field, series);
-
-		uint8_t shifted_value = new_value << params.shift;
-		updateBits(params.mask, shifted_value);
-
-		return value_;
 	}
 	template<typename Field>
 	uint8_t getRegisterField(const Field field) const
@@ -70,6 +91,14 @@ struct Register
 		ConfigParams params = getFieldConfigParams(reg, field, chipSeries);
 
 		return (getValue() & params.mask) >> params.shift;
+	}
+	template<typename Field>
+	uint8_t updateRegisterField(const Field field, uint8_t new_value)
+	{
+		const Series series = isSx1272Plus(model) ? Series::SM72 : Series::SM76;
+		ConfigParams params = getFieldConfigParams(reg, field, series);
+		value_ = (value_ & ~params.mask) | ((new_value << params.shift) & params.mask);
+		return value_;
 	}
 
 	template<typename ValueType>
@@ -157,40 +186,11 @@ struct Register
   private:
 	uint8_t value_;
 
-	static constexpr etl::array<OptModeField, 7> optModeFields = {
-		// Long range Mode
-		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM72, {7, 0b10000000}, 0},
-		OptModeField{optField::LongRangeMode, MODE::RW, Series::SM76, {7, 0b10000000}, 0},
-		// AccessSharedReg
-		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM72, {6, 0b01000000}, 0},
-		OptModeField{optField::AccessSharedReg, MODE::RW, Series::SM76, {6, 0b01000000}, 0},
-		// LowFreqMode Only for SM76
-		OptModeField{optField::LowFreqMode, MODE::RW, Series::SM76, {3, 0b00001000}, 0x1},
-		// TranscieverMode
-		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM72, {0, 0b00000111}, 0x1},
-		OptModeField{optField::TransceiverModes, MODE::RWT, Series::SM76, {0, 0b00000111}, 0x1},
-	};
-
-	static constexpr etl::array<ModeConfig1Field, 8> modemConfig1Fields = {
-		// Bandwidth:
-		ModeConfig1Field{config1Field::Bandwidth, MODE::RW, Series::SM72, {6, 0b11000000}, 0x0},
-		ModeConfig1Field{config1Field::Bandwidth, MODE::RW, Series::SM76, {4, 0b11110000}, 0x0},
-		// Coding Rate:
-		ModeConfig1Field{config1Field::CodingRate, MODE::RW, Series::SM72, {3, 0b00111000}, 0x0},
-		{config1Field::CodingRate, MODE::RW, Series::SM76, {1, 0b00001110}, 0x0},
-		// HeaderMode
-		ModeConfig1Field{config1Field::HeaderMode, MODE::RW, Series::SM72, {2, 0b00000100}, 0x0},
-		ModeConfig1Field{config1Field::HeaderMode, MODE::RW, Series::SM76, {0, 0b00000001}, 0x0},
-		// CRC (only defined for Sm72 series):
-		ModeConfig1Field{config1Field::CRC, MODE::RW, Series::SM72, {1, 0b00000010}, 0x0},
-		// Low Data Optimization (only defined for Sm72 series):
-		ModeConfig1Field{
-			config1Field::LowDataOptimization, MODE::RW, Series::SM72, {0, 0b00000001}, 0x0}};
-
 	static constexpr etl::array<RegInfo, REG_COUNT> regTable = {
 		{{REG::FIFO, 0x00, MODE::RW, 0x00},
-		 {REG::OPMODE, 0x01, MODE::RW, 0x00, static_cast<const void*>(optModeFields.data()),
-		  optModeFields.size()},
+		 {REG::OPMODE, 0x01, MODE::RW, 0x00,
+		  static_cast<const void*>(ConfigFields::optModeFields.data()),
+		  ConfigFields::optModeFields.size()},
 		 {REG::FRF_MSB, 0x06, MODE::RW, 0x6C},
 		 {REG::FRF_MID, 0x07, MODE::RW, 0x80},
 		 {REG::FRF_LSB, 0x08, MODE::RW, 0x00},
@@ -209,7 +209,8 @@ struct Register
 		 {REG::PKT_RSSI, 0x1A, MODE::R, 0x00},
 		 {REG::HOP_CHANNEL, 0x1C, MODE::R, 0x00},
 		 {REG::MODEM_CONFIG1, 0x1D, MODE::RW, 0x00,
-		  static_cast<const void*>(modemConfig1Fields.data()), modemConfig1Fields.size()},
+		  static_cast<const void*>(ConfigFields::modemConfig1Fields.data()),
+		  ConfigFields::modemConfig1Fields.size()},
 		 {REG::MODEM_CONFIG2, 0x1E, MODE::RW, 0x00},
 		 {REG::SYMB_TIMEOUT_LSB, 0x1F, MODE::R, 0x00},
 		 {REG::PREAMBLE_MSB, 0x20, MODE::RW, 0x00},
@@ -234,7 +235,7 @@ struct Register
 		 {REG::DIO_MAPPING_2, 0x41, MODE::RW, 0x00},
 		 {REG::VERSION, 0x42, MODE::R, 0x00},
 		 {REG::PADAC, 0x4D, MODE::RW, 0x00}}};
-	constexpr const RegInfo* lookupRegInfo(REG r) const
+	static constexpr const RegInfo* lookupRegInfo(REG r)
 	{
 		for(const auto& info: regTable)
 		{
@@ -268,62 +269,38 @@ struct Register
 		// Return a default value if no match is found
 		return {0, 0};
 	}
-	constexpr uint8_t getDefaultValue(REG r, ChipModel m)
+
+	template<REG R, ChipModel M>
+	static constexpr uint8_t getDefaultValue()
 	{
-		const RegInfo* info = lookupRegInfo(r);
+		// Look up the register's information
+		const RegInfo* info = lookupRegInfo(R);
 		if(!info)
 			return 0xFF;
+
 		if(!info->configFields)
-		{
-			// printf("[ERROR] No config fields for reg %d\n", static_cast<int>(r));
 			return info->defaultValue;
-		}
 
-		// If configuration fields exist, compute default based on all fields
-		if(info->configFields)
+		// Directly call the templated function to compute the default value
+		return computeDefaultFromFields<FieldTypeForReg_t<R>, M>(info);
+	}
+	template<typename FieldType, ChipModel M>
+	static constexpr uint8_t computeDefaultFromFields(const RegInfo* info)
+	{
+		uint8_t computedValue = 0;
+		constexpr Series chip_series = getChipSeries(M);
+		using ConfigFields = typename SettingBase<FieldType>::configFields;
+		auto* fields = static_cast<const ConfigFields*>(info->configFields);
+
+		// Iterate over the fields and compute the value depending on the chip series
+		for(size_t i = 0; i < info->configFieldCount; ++i)
 		{
-			uint8_t computedValue = 0;
-
-			switch(r)
+			if(fields[i].series == chip_series)
 			{
-				case REG::OPMODE:
-				{
-					using FieldType = FieldTypeForReg_t<REG::OPMODE>;
-					using ConfigFields = SettingBase<FieldType>::configFields;
-					auto* fields = static_cast<const ConfigFields*>(info->configFields);
-					for(size_t i = 0; i < info->configFieldCount; ++i)
-					{
-						if(fields[i].series == chipSeries) // Match correct Series
-						{
-							computedValue |=
-								((fields[i].reset) << __builtin_ctz(fields[i].params.mask));
-						}
-					}
-					break;
-				}
-				case REG::MODEM_CONFIG1:
-				{
-					using FieldType = FieldTypeForReg_t<REG::MODEM_CONFIG1>;
-					using ConfigFields = SettingBase<FieldType>::configFields;
-					auto* fields = static_cast<const ConfigFields*>(info->configFields);
-					for(size_t i = 0; i < info->configFieldCount; ++i)
-					{
-						if(fields[i].series == chipSeries) // Match correct Series
-						{
-							computedValue |=
-								((fields[i].reset) << __builtin_ctz(fields[i].params.mask));
-						}
-					}
-					break;
-				}
-				default:
-					return info->defaultValue;
+				computedValue |= ((fields[i].reset) << __builtin_ctz(fields[i].params.mask));
 			}
-
-			return computedValue;
 		}
-
-		return info->defaultValue;
+		return computedValue;
 	}
 
 	constexpr MODE getRegMode(REG r)
@@ -331,7 +308,7 @@ struct Register
 		const RegInfo* info = lookupRegInfo(r);
 		return info ? info->mode : MODE::ANY;
 	}
-	constexpr Series getChipSeries(ChipModel model)
+	static constexpr Series getChipSeries(ChipModel model)
 	{
 		switch(model)
 		{
@@ -358,6 +335,7 @@ struct Register
 		}
 	}
 };
+
 template<ChipModel Model>
 class LoRaRegisters
 {
@@ -382,53 +360,51 @@ class LoRaRegisters
 
   private:
 	// Private constructor to enforce Singleton pattern
-	LoRaRegisters() :
-		registers{
-			Register(Model, REG::FIFO),
-			Register(Model, REG::OPMODE),
-			Register(Model, REG::FRF_MSB),
-			Register(Model, REG::FRF_MID),
-			Register(Model, REG::FRF_LSB),
-			Register(Model, REG::PAC),
-			Register(Model, REG::PARAMP),
-			Register(Model, REG::OCP),
-			Register(Model, REG::LNA),
-			Register(Model, REG::FIFO_ADDR_PTR),
-			Register(Model, REG::FIFO_TX_BASE_AD),
-			Register(Model, REG::FIFO_RX_BASE_AD),
-			Register(Model, REG::FIFO_RX_CURRENT_ADDR),
-			Register(Model, REG::IRQ_FLAGS_MASK),
-			Register(Model, REG::IRQ_FLAGS),
-			Register(Model, REG::RX_BYTES_NB),
-			Register(Model, REG::PKT_SNR_VALUE),
-			Register(Model, REG::PKT_RSSI),
-			Register(Model, REG::HOP_CHANNEL),
-			Register(Model, REG::MODEM_CONFIG1),
-			Register(Model, REG::MODEM_CONFIG2),
-			Register(Model, REG::SYMB_TIMEOUT_LSB),
-			Register(Model, REG::PREAMBLE_MSB),
-			Register(Model, REG::PREAMBLE_LSB),
-			Register(Model, REG::PAYLOAD_LENGTH),
-			Register(Model, REG::MAX_PAYLOAD_LENGTH),
-			Register(Model, REG::HOP_PERIOD),
-			Register(Model, REG::FIFO_RX_BYTE_ADDR_PTR),
-			Register(Model, REG::MODEM_CONFIG3),
-			Register(Model, REG::PPM_CORRECTION),
-			Register(Model, REG::FREQ_ERROR_MSB),
-			Register(Model, REG::FREQ_ERROR_MID),
-			Register(Model, REG::FREQ_ERROR_LSB),
-			Register(Model, REG::RSSI_WIDEBAND),
-			Register(Model, REG::DETECT_OPTIMIZE),
-			Register(Model, REG::INVERTIQ),
-			Register(Model, REG::DET_TRESH),
-			Register(Model, REG::SYNC_WORD),
-			Register(Model, REG::INVERTIQ2),
-			Register(Model, REG::TEMP),
-			Register(Model, REG::DIO_MAPPING_1),
-			Register(Model, REG::DIO_MAPPING_2),
-			Register(Model, REG::VERSION),
-			Register(Model, REG::PADAC),
-		}
+	constexpr LoRaRegisters() :
+		registers{Register::createRegister<Model, REG::FIFO>(),
+				  Register::createRegister<Model, REG::OPMODE>(),
+				  Register::createRegister<Model, REG::FRF_MSB>(),
+				  Register::createRegister<Model, REG::FRF_MID>(),
+				  Register::createRegister<Model, REG::FRF_LSB>(),
+				  Register::createRegister<Model, REG::PAC>(),
+				  Register::createRegister<Model, REG::PARAMP>(),
+				  Register::createRegister<Model, REG::OCP>(),
+				  Register::createRegister<Model, REG::LNA>(),
+				  Register::createRegister<Model, REG::FIFO_ADDR_PTR>(),
+				  Register::createRegister<Model, REG::FIFO_TX_BASE_AD>(),
+				  Register::createRegister<Model, REG::FIFO_RX_BASE_AD>(),
+				  Register::createRegister<Model, REG::FIFO_RX_CURRENT_ADDR>(),
+				  Register::createRegister<Model, REG::IRQ_FLAGS_MASK>(),
+				  Register::createRegister<Model, REG::IRQ_FLAGS>(),
+				  Register::createRegister<Model, REG::RX_BYTES_NB>(),
+				  Register::createRegister<Model, REG::PKT_SNR_VALUE>(),
+				  Register::createRegister<Model, REG::PKT_RSSI>(),
+				  Register::createRegister<Model, REG::HOP_CHANNEL>(),
+				  Register::createRegister<Model, REG::MODEM_CONFIG1>(),
+				  Register::createRegister<Model, REG::MODEM_CONFIG2>(),
+				  Register::createRegister<Model, REG::SYMB_TIMEOUT_LSB>(),
+				  Register::createRegister<Model, REG::PREAMBLE_MSB>(),
+				  Register::createRegister<Model, REG::PREAMBLE_LSB>(),
+				  Register::createRegister<Model, REG::PAYLOAD_LENGTH>(),
+				  Register::createRegister<Model, REG::MAX_PAYLOAD_LENGTH>(),
+				  Register::createRegister<Model, REG::HOP_PERIOD>(),
+				  Register::createRegister<Model, REG::FIFO_RX_BYTE_ADDR_PTR>(),
+				  Register::createRegister<Model, REG::MODEM_CONFIG3>(),
+				  Register::createRegister<Model, REG::PPM_CORRECTION>(),
+				  Register::createRegister<Model, REG::FREQ_ERROR_MSB>(),
+				  Register::createRegister<Model, REG::FREQ_ERROR_MID>(),
+				  Register::createRegister<Model, REG::FREQ_ERROR_LSB>(),
+				  Register::createRegister<Model, REG::RSSI_WIDEBAND>(),
+				  Register::createRegister<Model, REG::DETECT_OPTIMIZE>(),
+				  Register::createRegister<Model, REG::INVERTIQ>(),
+				  Register::createRegister<Model, REG::DET_TRESH>(),
+				  Register::createRegister<Model, REG::SYNC_WORD>(),
+				  Register::createRegister<Model, REG::INVERTIQ2>(),
+				  Register::createRegister<Model, REG::TEMP>(),
+				  Register::createRegister<Model, REG::DIO_MAPPING_1>(),
+				  Register::createRegister<Model, REG::DIO_MAPPING_2>(),
+				  Register::createRegister<Model, REG::VERSION>(),
+				  Register::createRegister<Model, REG::PADAC>()}
 	{
 	}
 
@@ -437,8 +413,92 @@ class LoRaRegisters
 	LoRaRegisters& operator=(const LoRaRegisters&) = delete;
 
   private:
-	etl::array<Register, REG_COUNT> registers;
+	// Array to store all registers
+	etl::array<Register, REG_COUNT>
+		registers; // Ensure REG_COUNT is defined based on your number of registers
 };
+
+// template<ChipModel Model>
+// class LoRaRegisters
+// {
+//   public:
+// 	static LoRaRegisters& getInstance()
+// 	{
+// 		static LoRaRegisters instance;
+// 		return instance;
+// 	}
+
+// 	Register* getRegister(REG reg)
+// 	{
+// 		for(auto& r: registers)
+// 		{
+// 			if(r.reg == reg)
+// 			{
+// 				return &r;
+// 			}
+// 		}
+// 		return nullptr;
+// 	}
+
+//   private:
+// 	// Private constructor to enforce Singleton pattern
+// 	LoRaRegisters() :
+// 		registers{
+// 			Register(Model, REG::FIFO),
+// 			Register(Model, REG::OPMODE),
+// 			Register(Model, REG::FRF_MSB),
+// 			Register(Model, REG::FRF_MID),
+// 			Register(Model, REG::FRF_LSB),
+// 			Register(Model, REG::PAC),
+// 			Register(Model, REG::PARAMP),
+// 			Register(Model, REG::OCP),
+// 			Register(Model, REG::LNA),
+// 			Register(Model, REG::FIFO_ADDR_PTR),
+// 			Register(Model, REG::FIFO_TX_BASE_AD),
+// 			Register(Model, REG::FIFO_RX_BASE_AD),
+// 			Register(Model, REG::FIFO_RX_CURRENT_ADDR),
+// 			Register(Model, REG::IRQ_FLAGS_MASK),
+// 			Register(Model, REG::IRQ_FLAGS),
+// 			Register(Model, REG::RX_BYTES_NB),
+// 			Register(Model, REG::PKT_SNR_VALUE),
+// 			Register(Model, REG::PKT_RSSI),
+// 			Register(Model, REG::HOP_CHANNEL),
+// 			Register(Model, REG::MODEM_CONFIG1),
+// 			Register(Model, REG::MODEM_CONFIG2),
+// 			Register(Model, REG::SYMB_TIMEOUT_LSB),
+// 			Register(Model, REG::PREAMBLE_MSB),
+// 			Register(Model, REG::PREAMBLE_LSB),
+// 			Register(Model, REG::PAYLOAD_LENGTH),
+// 			Register(Model, REG::MAX_PAYLOAD_LENGTH),
+// 			Register(Model, REG::HOP_PERIOD),
+// 			Register(Model, REG::FIFO_RX_BYTE_ADDR_PTR),
+// 			Register(Model, REG::MODEM_CONFIG3),
+// 			Register(Model, REG::PPM_CORRECTION),
+// 			Register(Model, REG::FREQ_ERROR_MSB),
+// 			Register(Model, REG::FREQ_ERROR_MID),
+// 			Register(Model, REG::FREQ_ERROR_LSB),
+// 			Register(Model, REG::RSSI_WIDEBAND),
+// 			Register(Model, REG::DETECT_OPTIMIZE),
+// 			Register(Model, REG::INVERTIQ),
+// 			Register(Model, REG::DET_TRESH),
+// 			Register(Model, REG::SYNC_WORD),
+// 			Register(Model, REG::INVERTIQ2),
+// 			Register(Model, REG::TEMP),
+// 			Register(Model, REG::DIO_MAPPING_1),
+// 			Register(Model, REG::DIO_MAPPING_2),
+// 			Register(Model, REG::VERSION),
+// 			Register(Model, REG::PADAC),
+// 		}
+// 	{
+// 	}
+
+// 	// Prevent copying and moving
+// 	LoRaRegisters(const LoRaRegisters&) = delete;
+// 	LoRaRegisters& operator=(const LoRaRegisters&) = delete;
+
+//   private:
+// 	etl::array<Register, REG_COUNT> registers;
+// };
 
 } // namespace LoRa
 

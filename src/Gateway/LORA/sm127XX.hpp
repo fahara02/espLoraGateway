@@ -3,6 +3,9 @@
 #include <cstdint>
 #include "etl/type_traits.h"
 #include "etl/optional.h"
+#include "etl/array.h"
+#include <array>
+#include <utility.h>
 
 namespace LoRa
 {
@@ -320,8 +323,14 @@ struct ModemConfig1Setting : public SettingBase<config1Field>
 	{
 	}
 };
+enum class defaultField : uint8_t
+{
+};
 template<REG reg>
-struct FieldTypeForReg;
+struct FieldTypeForReg
+{
+	using Type = defaultField;
+};
 
 template<>
 struct FieldTypeForReg<REG::OPMODE>
@@ -334,8 +343,6 @@ struct FieldTypeForReg<REG::MODEM_CONFIG1>
 {
 	using Type = config1Field;
 };
-
-// Add more mappings as needed...
 
 template<REG reg>
 using FieldTypeForReg_t = typename FieldTypeForReg<reg>::Type;
