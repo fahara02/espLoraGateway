@@ -3,6 +3,7 @@
 #include "LoRaConfigs.hpp"
 #include "etl/unordered_map.h"
 #include "etl/array.h"
+#include "GlobalDefines.hpp"
 namespace LoRa
 {
 enum class LoRaDevices

@@ -89,10 +89,8 @@ struct Register
 	}
 	template<typename Field>
 	uint8_t getRegisterField(const Field field) const
-	{   
-		
-		ConfigParams params = getFieldConfigParams(reg, field, chipSeries);		
-		LOG::TEST(LORA_REG,"Register  Value after getting config param: 0x%02X", getValue());
+	{
+		ConfigParams params = getFieldConfigParams(reg, field, chipSeries);
 		return (getValue() & params.mask) >> params.shift;
 	}
 	template<typename Field>
@@ -101,6 +99,13 @@ struct Register
 		const Series series = isSx1272Plus(model) ? Series::SM72 : Series::SM76;
 		ConfigParams params = getFieldConfigParams(reg, field, series);
 		value_ = (value_ & ~params.mask) | ((new_value << params.shift) & params.mask);
+		return value_;
+	}
+
+	uint8_t updateRegister(uint8_t new_value)
+	{
+
+		value_ = new_value;
 		return value_;
 	}
 
@@ -164,27 +169,15 @@ struct Register
 		return value_;
 	}
 
-	void reset()
-	{
-		value_ = resetValue;
-	}
-	uint8_t getValue() const
-	{
-		return value_;
-	}
-	void setValue(uint8_t v)
-	{
-		value_ = v;
-	}
+	void reset() { value_ = resetValue; }
+	uint8_t getValue() const { return value_; }
+	void setValue(uint8_t v) { value_ = v; }
 
 	void updateBits(uint8_t mask, uint8_t newValue)
 	{
 		value_ = (value_ & ~mask) | (newValue & mask);
 	}
-	Series getSeries() const
-	{
-		return chipSeries;
-	}
+	Series getSeries() const { return chipSeries; }
 
   private:
 	uint8_t value_;
@@ -194,8 +187,8 @@ struct Register
 		 {REG::OPMODE, 0x01, MODE::RW, 0x00,
 		  static_cast<const void*>(ConfigFields::optModeFields.data()),
 		  ConfigFields::optModeFields.size()},
-		 {REG::FRF_MSB, 0x06, MODE::RW, 0x6C},
-		 {REG::FRF_MID, 0x07, MODE::RW, 0x80},
+		 {REG::FRF_MSB, 0x06, MODE::RW, 0x00},
+		 {REG::FRF_MID, 0x07, MODE::RW, 0x00},
 		 {REG::FRF_LSB, 0x08, MODE::RW, 0x00},
 		 {REG::PAC, 0x09, MODE::RW, 0x00},
 		 {REG::PARAMP, 0x0A, MODE::RW, 0x00},
@@ -277,12 +270,28 @@ struct Register
 	static constexpr uint8_t getDefaultValue()
 	{
 		// Look up the register's information
+
 		const RegInfo* info = lookupRegInfo(R);
 		if(!info)
 			return 0xFF;
 
 		if(!info->configFields)
-			return info->defaultValue;
+		{
+			constexpr Series chip_series = getChipSeries(M);
+			if constexpr(R == REG::FRF_MSB)
+			{
+				return (chip_series == Series::SM72) ? 0xE4 : 0x6C;
+			}
+			else if constexpr(R == REG::FRF_MID)
+			{
+				return (chip_series == Series::SM72) ? 0xC0 : 0x80;
+			}
+
+			else
+			{
+				return info->defaultValue;
+			}
+		}
 
 		// Directly call the templated function to compute the default value
 		return computeDefaultFromFields<FieldTypeForReg_t<R>, M>(info);

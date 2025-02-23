@@ -19,10 +19,7 @@ void Config::begin(Preferences* prefs)
 	_serialConfig = _prefs->getULong("serialConfig", _serialConfig);
 }
 
-uint16_t Config::getTcpPort()
-{
-	return _tcpPort;
-}
+uint16_t Config::getTcpPort() { return _tcpPort; }
 
 void Config::setTcpPort(uint16_t value)
 {
@@ -31,10 +28,7 @@ void Config::setTcpPort(uint16_t value)
 	_tcpPort = value;
 	_prefs->putUShort("tcpPort", _tcpPort);
 }
-uint16_t Config::getModbusPort()
-{
-	return _modbusPort;
-}
+uint16_t Config::getModbusPort() { return _modbusPort; }
 
 void Config::setModbusPort(uint16_t value)
 {
@@ -44,10 +38,7 @@ void Config::setModbusPort(uint16_t value)
 	_prefs->putUShort("modbusPort", _modbusPort);
 }
 
-uint32_t Config::getTcpTimeout()
-{
-	return _tcpTimeout;
-}
+uint32_t Config::getTcpTimeout() { return _tcpTimeout; }
 
 void Config::setTcpTimeout(uint32_t value)
 {
@@ -57,15 +48,9 @@ void Config::setTcpTimeout(uint32_t value)
 	_prefs->putULong("tcpTimeout", _tcpTimeout);
 }
 
-uint32_t Config::getModbusConfig()
-{
-	return _modbusConfig;
-}
+uint32_t Config::getModbusConfig() { return _modbusConfig; }
 
-unsigned long Config::getModbusBaudRate()
-{
-	return _modbusBaudRate;
-}
+unsigned long Config::getModbusBaudRate() { return _modbusBaudRate; }
 
 void Config::setModbusBaudRate(unsigned long value)
 {
@@ -75,10 +60,7 @@ void Config::setModbusBaudRate(unsigned long value)
 	_prefs->putULong("modbusBaudRate", _modbusBaudRate);
 }
 
-uint8_t Config::getModbusDataBits()
-{
-	return ((_modbusConfig & 0xc) >> 2) + 5;
-}
+uint8_t Config::getModbusDataBits() { return ((_modbusConfig & 0xc) >> 2) + 5; }
 
 void Config::setModbusDataBits(uint8_t value)
 {
@@ -91,10 +73,7 @@ void Config::setModbusDataBits(uint8_t value)
 	_prefs->putULong("modbusConfig", _modbusConfig);
 }
 
-uint8_t Config::getModbusParity()
-{
-	return _modbusConfig & 0x3;
-}
+uint8_t Config::getModbusParity() { return _modbusConfig & 0x3; }
 
 void Config::setModbusParity(uint8_t value)
 {
@@ -106,10 +85,7 @@ void Config::setModbusParity(uint8_t value)
 	_prefs->putULong("modbusConfig", _modbusConfig);
 }
 
-uint8_t Config::getModbusStopBits()
-{
-	return (_modbusConfig & 0x30) >> 4;
-}
+uint8_t Config::getModbusStopBits() { return (_modbusConfig & 0x30) >> 4; }
 
 void Config::setModbusStopBits(uint8_t value)
 {
@@ -121,10 +97,7 @@ void Config::setModbusStopBits(uint8_t value)
 	_prefs->putULong("modbusConfig", _modbusConfig);
 }
 
-int8_t Config::getModbusRtsPin()
-{
-	return _modbusRtsPin;
-}
+int8_t Config::getModbusRtsPin() { return _modbusRtsPin; }
 
 void Config::setModbusRtsPin(int8_t value)
 {
@@ -134,15 +107,9 @@ void Config::setModbusRtsPin(int8_t value)
 	_prefs->putChar("modbusRtsPin", _modbusRtsPin);
 }
 
-uint32_t Config::getSerialConfig()
-{
-	return _serialConfig;
-}
+uint32_t Config::getSerialConfig() { return _serialConfig; }
 
-unsigned long Config::getSerialBaudRate()
-{
-	return _serialBaudRate;
-}
+unsigned long Config::getSerialBaudRate() { return _serialBaudRate; }
 
 void Config::setSerialBaudRate(unsigned long value)
 {
@@ -152,10 +119,7 @@ void Config::setSerialBaudRate(unsigned long value)
 	_prefs->putULong("serialBaudRate", _serialBaudRate);
 }
 
-uint8_t Config::getSerialDataBits()
-{
-	return ((_serialConfig & 0xc) >> 2) + 5;
-}
+uint8_t Config::getSerialDataBits() { return ((_serialConfig & 0xc) >> 2) + 5; }
 
 void Config::setSerialDataBits(uint8_t value)
 {
@@ -168,10 +132,7 @@ void Config::setSerialDataBits(uint8_t value)
 	_prefs->putULong("serialConfig", _serialConfig);
 }
 
-uint8_t Config::getSerialParity()
-{
-	return _serialConfig & 0x3;
-}
+uint8_t Config::getSerialParity() { return _serialConfig & 0x3; }
 
 void Config::setSerialParity(uint8_t value)
 {
@@ -183,10 +144,7 @@ void Config::setSerialParity(uint8_t value)
 	_prefs->putULong("serialConfig", _serialConfig);
 }
 
-uint8_t Config::getSerialStopBits()
-{
-	return (_serialConfig & 0x30) >> 4;
-}
+uint8_t Config::getSerialStopBits() { return (_serialConfig & 0x30) >> 4; }
 
 void Config::setSerialStopBits(uint8_t value)
 {

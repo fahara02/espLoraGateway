@@ -100,15 +100,9 @@ constexpr bool isSx1272Plus(ChipModel m)
 	return m == ChipModel::SX1272 || m == ChipModel::SX1273;
 }
 
-constexpr bool isSx126Plus(ChipModel m)
-{
-	return m == ChipModel::SX1261 || m == ChipModel::SX1262;
-}
+constexpr bool isSx126Plus(ChipModel m) { return m == ChipModel::SX1261 || m == ChipModel::SX1262; }
 
-constexpr bool isRfmPlus(ChipModel m)
-{
-	return m == ChipModel::RFM95;
-}
+constexpr bool isRfmPlus(ChipModel m) { return m == ChipModel::RFM95; }
 
 enum class Series : uint8_t
 {
@@ -128,6 +122,14 @@ constexpr bool hasFlag(Series series, Series flag)
 {
 	return (static_cast<uint8_t>(series) & static_cast<uint8_t>(flag)) != 0;
 }
+
+enum class optField : uint8_t
+{
+	LongRangeMode,
+	AccessSharedReg,
+	LowFreqMode,
+	TransceiverModes
+};
 
 enum class LongRangeMode : uint8_t
 {
@@ -160,14 +162,6 @@ enum class TransceiverModes : uint8_t
 
 struct NoLowFreqMode
 {
-};
-
-enum class optField : uint8_t
-{
-	LongRangeMode,
-	AccessSharedReg,
-	LowFreqMode,
-	TransceiverModes
 };
 
 enum class CodingRate : uint8_t
@@ -256,9 +250,7 @@ struct SettingBase
 	};
 
   public:
-	constexpr SettingBase(REG reg) : settingFor(reg)
-	{
-	}
+	constexpr SettingBase(REG reg) : settingFor(reg) {}
 };
 template<ChipModel Model>
 struct optModeSetting : public SettingBase<optField>
@@ -281,8 +273,8 @@ struct optModeSetting : public SettingBase<optField>
 		LongRangeMode lr, AccessSharedReg sr,
 		typename etl::conditional<is_sx1276_plus_v<Model>, LowFreqMode, NoLowFreqMode>::type lf,
 		TransceiverModes tx) :
-		SettingBase<optField>(REG::OPMODE),
-		long_range(lr), shared_reg(sr), low_freq(lf), transceiver(tx)
+		SettingBase<optField>(REG::OPMODE), long_range(lr), shared_reg(sr), low_freq(lf),
+		transceiver(tx)
 	{
 	}
 };
@@ -318,8 +310,8 @@ struct ModemConfig1Setting : public SettingBase<config1Field>
 	template<typename T = void, typename etl::enable_if_t<isSx1272Plus(Model), T>* = nullptr>
 	constexpr ModemConfig1Setting(BandwidthType bw_, CodingRate cr, HeaderMode hm, CRCMode m,
 								  LowDataRateOptimize ldr) :
-		SettingBase<config1Field>(REG::MODEM_CONFIG1),
-		bw(bw_), coding_rate(cr), header_mode(hm), mode(m), ldro(ldr)
+		SettingBase<config1Field>(REG::MODEM_CONFIG1), bw(bw_), coding_rate(cr), header_mode(hm),
+		mode(m), ldro(ldr)
 	{
 	}
 };
