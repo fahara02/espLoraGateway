@@ -15,7 +15,6 @@ void MockLoRaModem::testOptModeRegister()
 {
 	LOG::TEST(TAG, "Testing optmode function");
 	Register reg(ChipModel::SX1276, REG::OPMODE, 0x09);
-	LOG::TEST(MODEM_TAG, "ChipSeries: %s", reg.getSeries() == Series::SM76 ? "Sm76" : "Wrong!");
 
 	// Test 1: Using LongRangeMode only.
 	{
@@ -76,19 +75,19 @@ void MockLoRaModem::testOptModeModem()
 	LOG::TEST(MODEM_TAG, "Before update: %02X", modem.getRegValue(REG::OPMODE));
 
 	// Test 1: Using LongRangeMode only.
-	 
-	{  
+
+	{
 		TEST_ASSERT_EQUAL_UINT8(0x09, modem.getRegValue(REG::OPMODE));
-		uint8_t  result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::SLEEP);
+		uint8_t result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::SLEEP);
 		LOG::TEST(MODEM_TAG, "After sleep modem is reading: %02X", modem.getRegValue(REG::OPMODE));
 		TEST_ASSERT_EQUAL_UINT8(0x08, result);
 		// Calling with LORA (which is 1). (1 & 1)<<7 gives 128 (0x80).and default value is 1
-		 result = modem.setOptMode(optField::LongRangeMode, LongRangeMode::LORA);
+		result = modem.setOptMode(optField::LongRangeMode, LongRangeMode::LORA);
 		TEST_ASSERT_EQUAL_UINT8(0x88, result);
 
 		// Calling with RX;
 		result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::RX);
-		TEST_ASSERT_EQUAL_UINT8(0x8D, result);		
+		TEST_ASSERT_EQUAL_UINT8(0x8D, result);
 		result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::STANDBY);
 		TEST_ASSERT_EQUAL_UINT8(0x89, result);
 		result = modem.setOptMode(optField::TransceiverModes, TransceiverModes::FSRx);
@@ -102,7 +101,6 @@ void MockLoRaModem::testOptModeModem()
 	}
 
 	LOG::DEBUG(MODEM_TAG, "After update: %02X", modem.getRegValue(REG::OPMODE));
-
 }
 
 void MockLoRaModem::testBandwidth()
@@ -111,7 +109,7 @@ void MockLoRaModem::testBandwidth()
 	MockLoRaModem modem;
 
 	// Test for SX1276 (BW_76)
-	using BandwidthType = typename LoRa::LoRaModem<LoRa::ChipModel::SX1276>::Bandwidth;
+	using BandwidthType = typename LoRa::LoRaModem<ChipModel::SX1276>::Bandwidth;
 	BandwidthType bw = BandwidthType::BW_250_KHZ;
 
 	uint8_t result76 = modem.setModemConfig1<BandwidthType>(config1Field::Bandwidth, bw, false);

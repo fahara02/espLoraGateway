@@ -6,21 +6,16 @@
 #include "etl/array.h"
 #include <array>
 #include <utility.h>
+#include "GlobalDefines.hpp"
+#include "Util.hpp"
 
 namespace LoRa
 {
-enum class ChipModel
+
+enum class unusedType : uint8_t
 {
-	RFM95,
-	SX1272,
-	SX1273,
-	SX1276,
-	SX1277,
-	SX1278,
-	SX1279,
-	SX1261,
-	SX1262,
 };
+
 enum class MODE
 {
 	R, // Read
@@ -104,31 +99,42 @@ constexpr bool isSx126Plus(ChipModel m) { return m == ChipModel::SX1261 || m == 
 
 constexpr bool isRfmPlus(ChipModel m) { return m == ChipModel::RFM95; }
 
-enum class Series : uint8_t
-{
-	None = 0,
-	RFM,
-	SM62,
-	SM72,
-	SM76,
-};
-
-constexpr Series operator|(Series a, Series b)
-{
-	return static_cast<Series>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
-}
-
-constexpr bool hasFlag(Series series, Series flag)
-{
-	return (static_cast<uint8_t>(series) & static_cast<uint8_t>(flag)) != 0;
-}
-
 enum class optField : uint8_t
 {
 	LongRangeMode,
 	AccessSharedReg,
 	LowFreqMode,
 	TransceiverModes
+};
+enum class pacField : uint8_t
+{
+	PaSelect,
+	MaxPower,
+	OutputPower
+};
+enum class PASelect : uint8_t
+{
+	RFIO_PIN = 0,
+	PA_BOOST = 1
+
+};
+enum class dBLimit_72 : uint8_t
+{
+	POWER_LIMIT_PS0 = 13,
+	POWER_LIMIT_PS1 = 20
+};
+enum class dBLimit_76 : uint8_t
+{
+	POWER_LIMIT_PS0 = 14,
+	POWER_LIMIT_PS1 = 20
+};
+
+template<ChipModel Model>
+struct dBLimitType
+{
+	using Type = typename etl::conditional_t<
+		is_sx1272_plus_v<Model>, dBLimit_72,
+		typename etl::conditional_t<is_sx1276_plus_v<Model>, dBLimit_76, unusedType>>;
 };
 
 enum class LongRangeMode : uint8_t
@@ -240,7 +246,7 @@ struct SettingBase
 {
 	REG settingFor;
 
-	struct configFields
+	struct configGroups
 	{
 		FieldEnum fieldEnum;
 		MODE mode;
@@ -261,7 +267,6 @@ struct optModeSetting : public SettingBase<optField>
 	typename etl::conditional<is_sx1276_plus_v<Model>, LowFreqMode, NoLowFreqMode>::type low_freq;
 	TransceiverModes transceiver;
 
-	using configFields = typename SettingBase<optField>::configFields;
 	constexpr optModeSetting() :
 		SettingBase<optField>(REG::OPMODE), long_range(LongRangeMode::FSK_OOK), // Default value
 		shared_reg(AccessSharedReg::ACCESS_FSK), low_freq(LowFreqMode::LOW_FREQUENCY_MODE),
@@ -278,6 +283,120 @@ struct optModeSetting : public SettingBase<optField>
 	{
 	}
 };
+
+template<ChipModel Model>
+struct PaConfigSetting : public SettingBase<pacField>
+{
+	using dBLimit = typename dBLimitType<Model>::Type;
+
+	constexpr PaConfigSetting() :
+		SettingBase<pacField>(REG::PAC), PaSelect(PASelect::RFIO_PIN), OutPutPower(0),
+		powerLimit_dB(getMaxPowerLimit(PaSelect))
+	{
+	}
+	constexpr PaConfigSetting(PASelect pa) :
+		SettingBase<pacField>(REG::PAC), PaSelect(pa), OutPutPower(0),
+		powerLimit_dB(getMaxPowerLimit(PaSelect))
+	{
+	}
+
+	constexpr PASelect getPASelect() { return PaSelect; }
+	constexpr uint8_t getMaxPower() { return MaxPower; }
+	constexpr uint8_t getPOut() { return OutPutPower; }
+	uint8_t getSetting()
+	{
+		uint8_t setting = 0;
+
+		if constexpr(is_sx1276_plus_v<Model>) // SM76 Series
+		{
+			setting |= (static_cast<uint8_t>(PaSelect) << 7);
+			setting |= ((MaxPower & 0x07) << 4); // Bits 6-4
+			setting |= (OutPutPower & 0x0F); // Bits 3-0
+		}
+		else if constexpr(is_sx1272_plus_v<Model>) // SM72 Series
+		{
+			setting |= (static_cast<uint8_t>(PaSelect) << 7);
+			setting |= (OutPutPower & 0x0F); // Bits 3-0
+		}
+
+		return setting;
+	}
+
+	void setPaSelect(PASelect pa)
+	{
+		PaSelect = pa;
+		powerLimit_dB = getMaxPowerLimit(PaSelect);
+	}
+	int setOutPutPower(float output_dB)
+	{
+
+		int result = -1;
+
+		for(uint8_t max_power_reg = 0; max_power_reg <= 7; max_power_reg++)
+		{
+
+			uint8_t candidate_pmax = getPmax_dB(max_power_reg);
+			if(candidate_pmax <= powerLimit_dB && output_dB <= candidate_pmax)
+			{
+
+				result = calculateOutPutPower(max_power_reg, output_dB);
+				if(result != -1)
+				{
+
+					if(result >= 0 && result <= 15)
+					{
+						OutPutPower = static_cast<uint8_t>(result);
+						return OutPutPower;
+					}
+				}
+			}
+		}
+		return result;
+	}
+
+  private:
+	PASelect PaSelect;
+	uint8_t MaxPower = 0x04;
+	uint8_t OutPutPower;
+	// dB unit data
+	uint8_t powerLimit_dB;
+
+	static constexpr uint8_t getMaxPowerLimit(PASelect pa)
+	{
+
+		return static_cast<uint8_t>(pa == PASelect::RFIO_PIN ? dBLimit::POWER_LIMIT_PS0 :
+															   dBLimit::POWER_LIMIT_PS1);
+	}
+
+	float getPmax_dB(uint8_t max_power_reg)
+	{
+		Series chip_Series = Util::GetSeries<Model>();
+		return chip_Series == Series::SM76 ? static_cast<int>(10.8 + 0.6 * max_power_reg) :
+											 powerLimit_dB;
+	}
+
+	int calculateOutPutPower(uint8_t MaxPower_Reg, float required_output_dB)
+	{
+		int result = -1;
+		float pMax_dB = 0;
+
+		Series chip_Series = Util::GetSeries<Model>();
+		if(chip_Series == Series::SM76)
+		{
+			pMax_dB = getPmax_dB(MaxPower_Reg);
+			result = (PaSelect == PASelect::RFIO_PIN) ? (required_output_dB - pMax_dB + 15) :
+														(required_output_dB - 2);
+		}
+		else
+		{
+			result = (PaSelect == PASelect::RFIO_PIN) ? (required_output_dB - 2) :
+														(required_output_dB + 1);
+		}
+
+		return result;
+	}
+};
+
 template<ChipModel Model>
 struct ModemConfig1Setting : public SettingBase<config1Field>
 {
@@ -289,8 +408,6 @@ struct ModemConfig1Setting : public SettingBase<config1Field>
 	// Only available for SX1272/SX1273, using std::optional to avoid void issues
 	etl::optional<CRCMode> mode;
 	etl::optional<LowDataRateOptimize> ldro;
-
-	using configFields = typename SettingBase<config1Field>::configFields;
 
 	constexpr ModemConfig1Setting() :
 		SettingBase<config1Field>(REG::MODEM_CONFIG1),

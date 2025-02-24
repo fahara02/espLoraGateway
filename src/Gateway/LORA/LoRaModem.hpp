@@ -36,6 +36,7 @@ class LoRaModem
 	void startReceiver();
 
 	Result setFrequency(uint32_t freq);
+	Result setPowerdB(float powerdB);
 	void setPow(uint8_t pow);
 
 	void hop();

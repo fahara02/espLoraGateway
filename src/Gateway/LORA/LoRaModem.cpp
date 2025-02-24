@@ -75,10 +75,27 @@ Result LoRaModem<Model>::setFrequency(uint32_t freq)
 	uint8_t lsb_value = static_cast<uint8_t>((temp_bytes >> 0) & 0xFF);
 	updateRegister(REG::FRF_LSB, lsb_value, true);
 	result = verifyRegister(REG::FRF_LSB, lsb_value);
-	if(!result.success)
-		return result;
 
-	result.success = true;
+	return result;
+}
+
+template<ChipModel Model>
+Result LoRaModem<Model>::setPowerdB(float powerdB)
+{
+	Result result;
+	result.success = false;
+	auto reg = registers_.getRegister(REG::PAC);
+	if(!reg)
+		return result;
+	PaConfigSetting<Model> pac;
+	if(pac.setOutPutPower(powerdB) == -1)
+	{
+		return result;
+	}
+	result.value = pac.getSetting();
+	updateRegister(REG::PAC, result.value, true);
+	result = verifyRegister(REG::PAC, result.value);
+
 	return result;
 }
 

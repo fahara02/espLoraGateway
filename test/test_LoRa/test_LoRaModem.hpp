@@ -10,10 +10,8 @@ using namespace LoRa;
 class MockLoRaModem : public LoRaModem<ChipModel::SX1276>
 {
   public:
-	MockLoRaModem() : LoRaModem(BoardModel::ESP32_TTGO, 0x20, LoRaBands::EU433, 0)
-	{
-	}
-	using Model = LoRa::ChipModel;
+	MockLoRaModem() : LoRaModem(BoardModel::ESP32_TTGO, 0x20, LoRaBands::EU433, 0) {}
+	using Model = ChipModel;
 
 	static void runAllTests();
 
